@@ -1,0 +1,44 @@
+import mongoose, { Document, Schema } from "mongoose";
+
+export interface IAssignedClient {
+  client: mongoose.Types.ObjectId;
+  assignedBy: mongoose.Types.ObjectId;
+  assignedByName: string;
+  assignedAt: Date;
+}
+
+export interface IUser extends Document {
+  email: string;
+  password: string;
+  name: string;
+  role: "user" | "admin" | "master_admin";
+  twoFactorSecret: string | null;
+  twoFactorEnabled: boolean;
+  assignedClients: IAssignedClient[];
+  createdAt: Date;
+}
+
+const AssignedClientSchema = new Schema<IAssignedClient>(
+  {
+    client: { type: Schema.Types.ObjectId, ref: "Company", required: true },
+    assignedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    assignedByName: { type: String, required: true },
+    assignedAt: { type: Date, default: () => new Date() },
+  },
+  { _id: false }
+);
+
+const UserSchema = new Schema<IUser>(
+  {
+    email: { type: String, required: true, unique: true, lowercase: true },
+    password: { type: String, required: true },
+    name: { type: String, required: true },
+    role: { type: String, enum: ["user", "admin", "master_admin"], default: "user" },
+    twoFactorSecret: { type: String, default: null },
+    twoFactorEnabled: { type: Boolean, default: false },
+    assignedClients: { type: [AssignedClientSchema], default: [] },
+  },
+  { timestamps: true }
+);
+
+export const User = mongoose.models.User ?? mongoose.model<IUser>("User", UserSchema);
