@@ -4,7 +4,7 @@ const bcrypt = require("bcryptjs");
 require("dotenv").config({ path: require("path").resolve(__dirname, "../.env.local") });
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const EMAIL    = process.env.ADMIN_EMAIL    || "admin@cms.com";
+const EMAIL    = process.env.ADMIN_EMAIL    || "admin@crm.com";
 const PASSWORD = process.env.ADMIN_PASSWORD || "adminpassword";
 const NAME     = process.env.ADMIN_NAME     || "Admin User";
 

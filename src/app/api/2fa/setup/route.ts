@@ -16,14 +16,14 @@ export async function GET(req: NextRequest) {
   // Reuse existing secret if already set — only generate new one if none exists
   let base32Secret = user.twoFactorSecret;
   if (!base32Secret) {
-    const generated = speakeasy.generateSecret({ name: `CMS (${user.email})`, length: 20 });
+    const generated = speakeasy.generateSecret({ name: `CRM (${user.email})`, length: 20 });
     base32Secret = generated.base32;
     await User.findByIdAndUpdate(token.id, { twoFactorSecret: base32Secret });
   }
 
   const otpauthUrl = speakeasy.otpauthURL({
     secret: base32Secret,
-    label: `CMS (${user.email})`,
+    label: `CRM (${user.email})`,
     encoding: "base32",
   });
   const qrCodeUrl = await QRCode.toDataURL(otpauthUrl);

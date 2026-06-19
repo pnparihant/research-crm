@@ -4,10 +4,11 @@ import { Session } from "next-auth";
 import { signOut } from "next-auth/react";
 import MasterAdminSubmissions from "./MasterAdminSubmissions";
 import ManageAdmins from "./ManageAdmins";
+import ManageUsers from "@/components/admin/ManageUsers";
 import AssignClients from "@/components/admin/AssignClients";
 import ChangePassword from "@/components/ChangePassword";
 
-type Tab = "submissions" | "admins" | "users" | "security";
+type Tab = "submissions" | "admins" | "users" | "assign" | "security";
 
 export default function MasterAdminDashboard({ session }: { session: Session }) {
   const [tab, setTab] = useState<Tab>("submissions");
@@ -41,6 +42,15 @@ export default function MasterAdminDashboard({ session }: { session: Session }) 
       ),
     },
     {
+      id: "assign",
+      label: "Assign Clients",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      ),
+    },
+    {
       id: "security",
       label: "Security",
       icon: (
@@ -62,7 +72,7 @@ export default function MasterAdminDashboard({ session }: { session: Session }) 
               </svg>
             </div>
             <div>
-              <span className="text-xl font-bold text-gray-900">CMS</span>
+              <span className="text-xl font-bold text-gray-900">CRM</span>
               <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">Master Admin</span>
             </div>
           </div>
@@ -98,7 +108,8 @@ export default function MasterAdminDashboard({ session }: { session: Session }) 
       <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6">
         {tab === "submissions" && <MasterAdminSubmissions />}
         {tab === "admins" && <ManageAdmins />}
-        {tab === "users" && <AssignClients />}
+        {tab === "users" && <ManageUsers />}
+        {tab === "assign" && <AssignClients />}
         {tab === "security" && <ChangePassword accentColor="purple" />}
       </main>
     </div>

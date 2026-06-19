@@ -16,7 +16,7 @@ export default function ManageAdmins() {
   const [employees, setEmployees] = useState<EmployeeUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -31,6 +31,7 @@ export default function ManageAdmins() {
   const [demoteTarget, setDemoteTarget] = useState<AdminUser | null>(null);
   const [demoteConfirm, setDemoteConfirm] = useState(false);
   const [demoting, setDemoting] = useState(false);
+
 
   const { toast } = useToast();
 
@@ -57,7 +58,7 @@ export default function ManageAdmins() {
     setSaving(false);
     if (!res.ok) { setError(data.error ?? "Failed to create admin"); return; }
     setAdmins((prev) => [data, ...prev]);
-    setForm({ name: "", email: "", password: "" });
+    setForm({ name: "", email: "", password: "", phone: "" });
     setShowForm(false);
     toast(`Admin "${data.name}" created successfully`, "success");
   }
@@ -215,7 +216,13 @@ export default function ManageAdmins() {
                 <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
                 <input type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="admin@cms.com" />
+                  placeholder="admin@crm.com" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Phone <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input type="tel" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="10-digit mobile number" />
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>

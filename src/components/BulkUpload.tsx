@@ -133,7 +133,7 @@ function downloadTemplate(clients: ClientItem[], userName: string) {
     XLSX.utils.book_append_sheet(wb, wsClients, "My Clients");
   }
 
-  XLSX.writeFile(wb, `CMS_Bulk_Template_${userName.replace(/\s+/g, "_")}.xlsx`);
+  XLSX.writeFile(wb, `CRM_Bulk_Template_${userName.replace(/\s+/g, "_")}.xlsx`);
 }
 
 export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () => void; userName: string }) {

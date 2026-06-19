@@ -3,10 +3,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
+import { useToast } from "@/components/ui/Toast";
 
 export default function Setup2FAClient() {
   const router = useRouter();
   const { data: session } = useSession();
+  const { toast } = useToast();
   const [qrCode, setQrCode] = useState("");
   const [secret, setSecret] = useState("");
   const [otp, setOtp] = useState("");
@@ -17,7 +19,8 @@ export default function Setup2FAClient() {
   useEffect(() => {
     fetch("/api/2fa/setup")
       .then((r) => r.json())
-      .then((data) => { setQrCode(data.qrCode); setSecret(data.secret); setFetching(false); });
+      .then((data) => { setQrCode(data.qrCode); setSecret(data.secret); setFetching(false); })
+      .catch(() => { toast("Failed to load 2FA setup", "error"); setFetching(false); });
   }, []);
 
   async function handleVerify(e: React.FormEvent) {
@@ -34,8 +37,9 @@ export default function Setup2FAClient() {
     const data = await res.json();
     setLoading(false);
 
-    if (!res.ok) { setError(data.error ?? "Invalid code, try again"); return; }
+    if (!res.ok) { setError(data.error ?? "Invalid code, try again"); toast(data.error ?? "Invalid code, try again", "error"); return; }
 
+    toast("2FA setup complete!", "success");
     const role = session?.user?.role;
     router.push(role === "master_admin" ? "/master-admin" : role === "admin" ? "/admin" : "/dashboard");
   }
@@ -43,7 +47,6 @@ export default function Setup2FAClient() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-8">
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,13 +66,11 @@ export default function Setup2FAClient() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Step 1 */}
             <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-800">
               <p className="font-semibold mb-1">Step 1 — Install an authenticator app</p>
               <p>Use <strong>Google Authenticator</strong>, <strong>Authy</strong>, or any TOTP app on your phone.</p>
             </div>
 
-            {/* Step 2 — QR */}
             <div>
               <p className="text-sm font-medium text-gray-700 mb-3">Step 2 — Scan this QR code</p>
               <div className="flex items-center gap-6 flex-wrap">
@@ -85,7 +86,6 @@ export default function Setup2FAClient() {
               </div>
             </div>
 
-            {/* Step 3 — Confirm */}
             <div>
               <p className="text-sm font-medium text-gray-700 mb-2">Step 3 — Enter the 6-digit code to confirm</p>
               {error && (

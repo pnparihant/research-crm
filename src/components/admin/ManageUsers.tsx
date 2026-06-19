@@ -1,0 +1,243 @@
+"use client";
+import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/Toast";
+
+interface UserRow {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  createdAt: string;
+}
+
+export default function ManageUsers() {
+  const { toast } = useToast();
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/users")
+      .then((r) => r.json())
+      .then((data) => { setUsers(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError("");
+    setSaving(true);
+    const res = await fetch("/api/admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) { setFormError(data.error ?? "Failed to create user"); return; }
+    setUsers((prev) => [data, ...prev]);
+    setForm({ name: "", email: "", password: "", phone: "" });
+    setShowForm(false);
+    toast(`User "${data.name}" created successfully`, "success");
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const res = await fetch(`/api/admin/users?id=${deleteTarget._id}`, { method: "DELETE" });
+    setDeleting(false);
+    if (!res.ok) { toast("Failed to delete user", "error"); setDeleteTarget(null); return; }
+    setUsers((prev) => prev.filter((u) => u._id !== deleteTarget._id));
+    toast(`User "${deleteTarget.name}" deleted`, "warning");
+    setDeleteTarget(null);
+  }
+
+  const filtered = users.filter((u) => {
+    const q = search.toLowerCase();
+    return !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+  });
+
+  return (
+    <>
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Delete User?</h3>
+                <p className="text-sm text-gray-500">{deleteTarget.name} · {deleteTarget.email}</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-5">
+              This will permanently delete <span className="font-semibold">{deleteTarget.name}</span>&apos;s account and all their data. This cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 rounded-lg transition-colors"
+              >
+                {deleting ? "Deleting…" : "Yes, delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-5 max-w-3xl">
+        {/* Header + add form */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-xl font-semibold text-gray-900">Users</h2>
+            <button
+              onClick={() => { setShowForm((v) => !v); setFormError(""); }}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add User
+            </button>
+          </div>
+          <p className="text-sm text-gray-500">Users can fill forms and view their submission history.</p>
+
+          {showForm && (
+            <form onSubmit={handleCreate} className="mt-5 p-5 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
+              <h3 className="text-sm font-semibold text-gray-700">New User Details</h3>
+              {formError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2.5 text-sm">{formError}</div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Full Name</label>
+                  <input
+                    type="text" required value={form.name}
+                    onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Jane Doe"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                  <input
+                    type="email" required value={form.email}
+                    onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="user@arihantcapital.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Phone <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <input
+                    type="tel" value={form.phone}
+                    onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="10-digit mobile number"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"} required minLength={8} value={form.password}
+                      onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Min. 8 characters"
+                    />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
+                      {showPassword
+                        ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                        : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      }
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button type="submit" disabled={saving} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors">
+                  {saving ? "Creating…" : "Create User"}
+                </button>
+                <button type="button" onClick={() => { setShowForm(false); setFormError(""); }} className="px-5 py-2 text-gray-500 hover:text-gray-700 text-sm font-medium">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* User list */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+            <h3 className="text-base font-semibold text-gray-900 flex-1">All Users</h3>
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+              </svg>
+              <input
+                type="text" placeholder="Search…" value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48"
+              />
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="p-10 text-center text-gray-400 text-sm">Loading…</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-10 text-center text-gray-400 text-sm">
+              {search ? `No users match "${search}"` : "No users yet. Add one above."}
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Name</th>
+                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Email</th>
+                  <th className="text-left px-5 py-3 font-semibold text-gray-600 hidden sm:table-cell">Phone</th>
+                  <th className="text-left px-5 py-3 font-semibold text-gray-600 hidden md:table-cell">Joined</th>
+                  <th className="px-5 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map((u) => (
+                  <tr key={u._id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3 font-medium text-gray-900">{u.name}</td>
+                    <td className="px-5 py-3 text-gray-500">{u.email}</td>
+                    <td className="px-5 py-3 text-gray-400 hidden sm:table-cell">{u.phone || "—"}</td>
+                    <td className="px-5 py-3 text-gray-400 hidden md:table-cell">
+                      {new Date(u.createdAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <button
+                        onClick={() => setDeleteTarget(u)}
+                        className="text-xs text-red-400 hover:text-red-600 font-medium hover:underline transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}

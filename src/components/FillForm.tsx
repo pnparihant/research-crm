@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useToast } from "@/components/ui/Toast";
 
 interface ClientItem { _id: string; name: string }
 interface StockItem { StockName: string; sect_name: string }
@@ -23,10 +24,9 @@ const EMPTY_FORM = {
 const MODES = ["Phone", "Online Meet", "Physical"] as const;
 
 export default function FillForm({ onSubmitted, userName }: { onSubmitted: () => void; userName: string }) {
+  const { toast } = useToast();
   const [form, setForm] = useState({ ...EMPTY_FORM, salesPerson: userName });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
 
@@ -37,7 +37,6 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
   const [showDropdown, setShowDropdown] = useState(false);
   const [stockSelected, setStockSelected] = useState(false);
   const stockRef = useRef<HTMLDivElement>(null);
-
 
   const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split("T")[0];
 
@@ -53,7 +52,6 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
       .catch(() => setStocksLoading(false));
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (stockRef.current && !stockRef.current.contains(e.target as Node)) setShowDropdown(false);
@@ -86,9 +84,8 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.recommendation) { setError("Please select Buy, Sell or Hold"); return; }
-    if (!form.modeOfCommunication) { setError("Please select mode of communication"); return; }
-    setError("");
+    if (!form.recommendation) { toast("Please select Buy, Sell or Hold", "warning"); return; }
+    if (!form.modeOfCommunication) { toast("Please select mode of communication", "warning"); return; }
     setLoading(true);
 
     const res = await fetch("/api/forms", {
@@ -100,13 +97,13 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
     const data = await res.json();
     setLoading(false);
 
-    if (!res.ok) { setError(data.error ?? "Submission failed"); return; }
+    if (!res.ok) { toast(data.error ?? "Submission failed", "error"); return; }
 
-    setSuccess(true);
+    toast("Form submitted successfully", "success");
     setForm({ ...EMPTY_FORM, salesPerson: userName });
     setStockQuery("");
     setStockSelected(false);
-    setTimeout(() => { setSuccess(false); onSubmitted(); }, 1500);
+    setTimeout(() => onSubmitted(), 1000);
   }
 
   const inputCls = "w-full px-3.5 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-gray-700 text-sm bg-white placeholder:text-gray-400 transition-shadow";
@@ -140,30 +137,6 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
       </div>
 
       <div className="px-6 sm:px-8 py-7 space-y-5">
-
-        {success && (
-          <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-100">
-              <svg className="h-4 w-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-green-800">Submitted successfully</p>
-              <p className="text-xs text-green-600 mt-0.5">Redirecting to history…</p>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3.5">
-            <svg className="h-5 w-5 shrink-0 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-4">
 
           {/* Section 1: Basic Info */}
@@ -266,7 +239,6 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                   <Badge n={7} /> Mode of Communication <span className="text-red-500">*</span>
-
                 </label>
                 <div className="flex gap-3 flex-wrap">
                   {MODES.map((mode) => {
@@ -309,7 +281,6 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
-                {/* Company — searchable typeahead */}
                 <div className="space-y-1.5" ref={stockRef}>
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                     <Badge n={8} /> Company <span className="text-red-500">*</span>
@@ -371,7 +342,6 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                   </div>
                 </div>
 
-                {/* Sector — auto-filled from stock selection */}
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                     <Badge n={9} /> Sector
@@ -402,7 +372,6 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
           <div className="rounded-xl border border-gray-200 overflow-hidden">
             <SectionLabel title="Recommendation" />
             <div className="p-5 space-y-5">
-
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                   <Badge n={11} /> Buy / Sell / Hold <span className="text-red-500">*</span>
@@ -428,7 +397,6 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                   })}
                 </div>
               </div>
-
             </div>
           </div>
 
@@ -455,7 +423,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
             <p className="text-xs text-gray-400">Fields marked <span className="text-red-500 font-medium">*</span> are required</p>
             <button
               type="submit"
-              disabled={loading || success}
+              disabled={loading}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-teal-700 hover:bg-teal-800 disabled:bg-teal-400 disabled:cursor-not-allowed text-white font-semibold px-7 py-3 sm:py-2.5 rounded-lg text-sm transition-colors"
             >
               {loading && (
@@ -464,7 +432,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
               )}
-              {loading ? "Submitting…" : success ? "Submitted!" : "Submit"}
+              {loading ? "Submitting…" : "Submit"}
             </button>
           </div>
 

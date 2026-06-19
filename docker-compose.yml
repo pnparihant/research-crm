@@ -1,0 +1,24 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+        NEXTAUTH_URL: ${NEXTAUTH_URL}
+        NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+        MONGODB_URI: ${MONGODB_URI}
+        MSSQL_HOST: ${MSSQL_HOST}
+        MSSQL_PORT: ${MSSQL_PORT:-1433}
+        MSSQL_DB: ${MSSQL_DB}
+        MSSQL_USER: ${MSSQL_USER}
+        MSSQL_PASSWORD: ${MSSQL_PASSWORD}
+    image: crm-app:latest
+    container_name: crm-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local        # git-ignored; copy from .env.example and fill in values
+    environment:
+      - NODE_ENV=production

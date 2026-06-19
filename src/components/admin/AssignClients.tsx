@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/Toast";
 
 interface ClientItem { _id: string; name: string }
 
@@ -17,13 +18,13 @@ interface UserItem {
 }
 
 export default function AssignClients() {
+  const { toast } = useToast();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [allClients, setAllClients] = useState<ClientItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null); // clientId being toggled
+  const [saving, setSaving] = useState<string | null>(null);
   const [openUser, setOpenUser] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -52,16 +53,19 @@ export default function AssignClients() {
     });
     setSaving(null);
 
-    if (!res.ok) return;
+    if (!res.ok) { toast("Failed to update assignment", "error"); return; }
 
-    // Refetch this user's updated assignments
     const updated = await fetch("/api/admin/users").then((r) => r.json());
     if (Array.isArray(updated)) {
       setUsers(updated.map((u) => ({ ...u, assignedClients: u.assignedClients ?? [] })));
     }
 
-    setSuccess(`${action === "add" ? "Assigned" : "Removed"} ${client.name} ${action === "add" ? "to" : "from"} ${user.name}`);
-    setTimeout(() => setSuccess(""), 3000);
+    toast(
+      action === "add"
+        ? `${client.name} assigned to ${user.name}`
+        : `${client.name} removed from ${user.name}`,
+      action === "add" ? "success" : "warning"
+    );
   }
 
   const filteredClients = allClients.filter((c) =>
@@ -80,7 +84,6 @@ export default function AssignClients() {
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
         <h2 className="text-lg font-semibold text-gray-900 mb-1">Assign Clients to Users</h2>
         <p className="text-sm text-gray-500">Each user sees only their assigned clients in the form. Assignments are logged with the admin who made them.</p>
-        {success && <div className="mt-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2">{success}</div>}
       </div>
 
       {users.length === 0 ? (

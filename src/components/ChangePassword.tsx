@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useToast } from "@/components/ui/Toast";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -15,20 +16,18 @@ function EyeIcon({ open }: { open: boolean }) {
 }
 
 export default function ChangePassword({ accentColor = "teal" }: { accentColor?: "teal" | "indigo" | "purple" }) {
+  const { toast } = useToast();
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [show, setShow] = useState({ current: false, new: false, confirm: false });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
   const ring = { teal: "focus:ring-teal-500", indigo: "focus:ring-indigo-500", purple: "focus:ring-purple-500" }[accentColor];
   const btn  = { teal: "bg-teal-700 hover:bg-teal-800 disabled:bg-teal-400", indigo: "bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400", purple: "bg-purple-700 hover:bg-purple-800 disabled:bg-purple-400" }[accentColor];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    if (form.newPassword !== form.confirmPassword) { setError("New passwords do not match"); return; }
-    if (form.newPassword.length < 8) { setError("New password must be at least 8 characters"); return; }
+    if (form.newPassword !== form.confirmPassword) { toast("New passwords do not match", "error"); return; }
+    if (form.newPassword.length < 8) { toast("New password must be at least 8 characters", "warning"); return; }
     setLoading(true);
 
     const res = await fetch("/api/auth/change-password", {
@@ -40,11 +39,10 @@ export default function ChangePassword({ accentColor = "teal" }: { accentColor?:
     const data = await res.json();
     setLoading(false);
 
-    if (!res.ok) { setError(data.error ?? "Failed to change password"); return; }
+    if (!res.ok) { toast(data.error ?? "Failed to change password", "error"); return; }
 
-    setSuccess(true);
+    toast("Password changed successfully", "success");
     setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    setTimeout(() => setSuccess(false), 4000);
   }
 
   const inputCls = `w-full px-3.5 py-2.5 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${ring} focus:border-transparent`;
@@ -79,24 +77,6 @@ export default function ChangePassword({ accentColor = "teal" }: { accentColor?:
       </div>
 
       <div className="px-6 py-5">
-        {success && (
-          <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 mb-5">
-            <svg className="h-4 w-4 shrink-0 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            <p className="text-sm font-medium text-green-800">Password changed successfully</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 mb-5">
-            <svg className="h-4 w-4 shrink-0 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <PasswordField field="currentPassword" label="Current Password" showKey="current" />
           <PasswordField field="newPassword" label="New Password" showKey="new" />

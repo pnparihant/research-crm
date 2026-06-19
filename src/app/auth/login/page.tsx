@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 type LoginTab = "client" | "admin";
-type Step = "credentials" | "2fa" | "forgot";
+type Step = "credentials" | "email-otp" | "forgot";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -43,7 +43,7 @@ const TAB_CONFIG: Record<LoginTab, {
   },
   admin: {
     label: "Admin Login",
-    placeholder: "admin@cms.com",
+    placeholder: "admin@crm.com",
     expectedRoles: ["admin", "master_admin"],
     ring: "focus:ring-indigo-500",
     btn: "bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400",
@@ -63,23 +63,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
+  const [devOtp, setDevOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotResetUrl, setForgotResetUrl] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   function switchTab(tab: LoginTab) {
     setActiveTab(tab);
     setEmail("");
     setPassword("");
     setOtp("");
+    setDevOtp("");
     setError("");
     setStep("credentials");
     setShowPassword(false);
     setForgotSent(false);
     setForgotEmail("");
     setForgotResetUrl("");
+    setResendCooldown(0);
   }
 
   async function handleForgot(e: React.FormEvent) {
@@ -115,39 +119,62 @@ export default function LoginPage() {
       return;
     }
 
-    if (session?.user?.twoFactorEnabled) {
-      setStep("2fa");
-    } else {
-      router.push("/auth/setup-2fa");
-    }
+    // All roles: send email OTP
+    await sendEmailOtp();
   }
 
-  async function handle2FA(e: React.FormEvent) {
+  async function sendEmailOtp() {
+    setLoading(true);
+    const res = await fetch("/api/auth/send-login-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) { setError(data.error ?? "Failed to send OTP"); return; }
+
+    setOtp("");
+    setStep("email-otp");
+    if (data.otp) setDevOtp(data.otp); // dev mode only
+
+    // 30-second resend cooldown
+    setResendCooldown(30);
+    const timer = setInterval(() => {
+      setResendCooldown((c) => {
+        if (c <= 1) { clearInterval(timer); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+  }
+
+  async function handleEmailOtp(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const res = await fetch("/api/2fa/verify", {
+    const res = await fetch("/api/auth/verify-login-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: otp }),
+      body: JSON.stringify({ email, otp }),
     });
 
     const data = await res.json();
     setLoading(false);
-    if (!res.ok) { setError(data.error ?? "Invalid OTP code"); return; }
+    if (!res.ok) { setError(data.error ?? "Invalid OTP"); return; }
 
     const s = await fetch("/api/auth/session").then((r) => r.json());
     router.push(redirectForRole(s?.user?.role ?? "user"));
   }
 
-  const cfg = TAB_CONFIG[activeTab];
+const cfg = TAB_CONFIG[activeTab];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-indigo-100">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
 
-        {/* Tabs — 2 only */}
+        {/* Tabs */}
         <div className="grid grid-cols-2">
           {(Object.keys(TAB_CONFIG) as LoginTab[]).map((tab) => (
             <button
@@ -170,18 +197,22 @@ export default function LoginPage() {
         <div className="p-8">
           <div className="text-center mb-7">
             <h1 className="text-xl font-bold text-gray-900">
-              {step === "2fa" ? "Two-Factor Authentication" : step === "forgot" ? "Forgot Password" : cfg.label}
+              {step === "email-otp"
+                ? "Verify Your Identity"
+                : step === "forgot"
+                ? "Forgot Password"
+                : cfg.label}
             </h1>
             <p className="text-gray-400 text-sm mt-1">
-              {step === "2fa"
-                ? "Enter the 6-digit code from your authenticator app"
+              {step === "email-otp"
+                ? `Enter the OTP sent to ${email}`
                 : step === "forgot"
                 ? "Enter your email to receive a reset link"
                 : "Enter your credentials to continue"}
             </p>
-            {step === "2fa" && (
-              <p className="text-amber-600 text-xs mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Codes refresh every 30 seconds. If the current code is rejected, wait for the next one and try again.
+            {step === "email-otp" && (
+              <p className="text-teal-700 text-xs mt-2 bg-teal-50 border border-teal-200 rounded-lg px-3 py-2">
+                Valid for 10 minutes. Do not share this OTP with anyone.
               </p>
             )}
           </div>
@@ -234,12 +265,20 @@ export default function LoginPage() {
                 {loading ? "Signing in..." : "Sign In"}
               </button>
             </form>
-          ) : step === "2fa" ? (
-            <form onSubmit={handle2FA} className="space-y-5">
+
+          ) : step === "email-otp" ? (
+            <form onSubmit={handleEmailOtp} className="space-y-5">
+              {devOtp && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+                  <span className="font-semibold">Dev mode OTP: </span>
+                  <span className="font-mono tracking-widest">{devOtp}</span>
+                </div>
+              )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Authentication Code</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">One-Time Password</label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   required
@@ -250,12 +289,23 @@ export default function LoginPage() {
                 />
               </div>
               <button type="submit" disabled={loading || otp.length < 6} className={`w-full ${cfg.btn} text-white font-semibold py-2.5 rounded-lg transition-colors`}>
-                {loading ? "Verifying..." : "Verify"}
+                {loading ? "Verifying..." : "Verify OTP"}
               </button>
-              <button type="button" onClick={() => { setStep("credentials"); setOtp(""); setError(""); }} className="w-full text-gray-400 hover:text-gray-600 text-sm">
-                ← Back
-              </button>
+              <div className="flex items-center justify-between text-sm">
+                <button type="button" onClick={() => { setStep("credentials"); setOtp(""); setDevOtp(""); setError(""); }} className="text-gray-400 hover:text-gray-600">
+                  ← Back
+                </button>
+                <button
+                  type="button"
+                  disabled={resendCooldown > 0 || loading}
+                  onClick={sendEmailOtp}
+                  className="text-teal-600 hover:text-teal-700 disabled:text-gray-400 font-medium"
+                >
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend OTP"}
+                </button>
+              </div>
             </form>
+
           ) : (
             <div className="space-y-5">
               {!forgotSent ? (

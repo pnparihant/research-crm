@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/Toast";
 
 interface Item { _id: string; name: string }
 interface CompanyItem { _id: string; name: string; groupId: string }
@@ -88,6 +89,7 @@ function MasterList({
 }
 
 export default function MasterDataManager() {
+  const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("sectors");
   const [sectors, setSectors] = useState<Item[]>([]);
   const [companyGroups, setCompanyGroups] = useState<Item[]>([]);
@@ -119,52 +121,64 @@ export default function MasterDataManager() {
   }
 
   async function masterDelete(url: string, id: string) {
-    await fetch(`${url}?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`${url}?id=${id}`, { method: "DELETE" });
+    return res.ok;
   }
 
   async function addSector(name: string) {
     const doc = await masterPost("/api/master/sectors", { name });
-    if (doc._id) setSectors((prev) => [...prev, doc].sort((a, b) => a.name.localeCompare(b.name)));
+    if (doc._id) { setSectors((prev) => [...prev, doc].sort((a, b) => a.name.localeCompare(b.name))); toast(`Sector "${name}" added`, "success"); }
+    else toast("Failed to add sector", "error");
   }
 
   async function deleteSector(id: string) {
-    await masterDelete("/api/master/sectors", id);
-    setSectors((prev) => prev.filter((s) => s._id !== id));
+    const name = sectors.find((s) => s._id === id)?.name ?? "";
+    const ok = await masterDelete("/api/master/sectors", id);
+    if (ok) { setSectors((prev) => prev.filter((s) => s._id !== id)); toast(`Sector "${name}" deleted`, "warning"); }
+    else toast("Failed to delete sector", "error");
   }
 
   async function addGroup(name: string) {
     const doc = await masterPost("/api/master/company-groups", { name });
-    if (doc._id) setCompanyGroups((prev) => [...prev, doc].sort((a, b) => a.name.localeCompare(b.name)));
+    if (doc._id) { setCompanyGroups((prev) => [...prev, doc].sort((a, b) => a.name.localeCompare(b.name))); toast(`Group "${name}" added`, "success"); }
+    else toast("Failed to add group", "error");
   }
 
   async function deleteGroup(id: string) {
-    await masterDelete("/api/master/company-groups", id);
-    setCompanyGroups((prev) => prev.filter((g) => g._id !== id));
-    if (selectedGroupId === id) setSelectedGroupId("");
+    const name = companyGroups.find((g) => g._id === id)?.name ?? "";
+    const ok = await masterDelete("/api/master/company-groups", id);
+    if (ok) { setCompanyGroups((prev) => prev.filter((g) => g._id !== id)); if (selectedGroupId === id) setSelectedGroupId(""); toast(`Group "${name}" deleted`, "warning"); }
+    else toast("Failed to delete group", "error");
   }
 
   async function addCompany() {
     if (!newCompanyName.trim() || !selectedGroupId) return;
     setAddingCompany(true);
     const doc = await masterPost("/api/master/companies", { name: newCompanyName.trim(), groupId: selectedGroupId });
-    if (doc._id) setCompanies((prev) => [...prev, doc].sort((a, b) => a.name.localeCompare(b.name)));
+    if (doc._id) { setCompanies((prev) => [...prev, doc].sort((a, b) => a.name.localeCompare(b.name))); toast(`Company "${newCompanyName.trim()}" added`, "success"); }
+    else toast("Failed to add company", "error");
     setNewCompanyName("");
     setAddingCompany(false);
   }
 
   async function deleteCompany(id: string) {
-    await masterDelete("/api/master/companies", id);
-    setCompanies((prev) => prev.filter((c) => c._id !== id));
+    const name = companies.find((c) => c._id === id)?.name ?? "";
+    const ok = await masterDelete("/api/master/companies", id);
+    if (ok) { setCompanies((prev) => prev.filter((c) => c._id !== id)); toast(`Company "${name}" deleted`, "warning"); }
+    else toast("Failed to delete company", "error");
   }
 
   async function addExec(name: string) {
     const doc = await masterPost("/api/master/sales-executives", { name });
-    if (doc._id) setSalesExecs((prev) => [...prev, doc].sort((a, b) => a.name.localeCompare(b.name)));
+    if (doc._id) { setSalesExecs((prev) => [...prev, doc].sort((a, b) => a.name.localeCompare(b.name))); toast(`Representative "${name}" added`, "success"); }
+    else toast("Failed to add representative", "error");
   }
 
   async function deleteExec(id: string) {
-    await masterDelete("/api/master/sales-executives", id);
-    setSalesExecs((prev) => prev.filter((e) => e._id !== id));
+    const name = salesExecs.find((e) => e._id === id)?.name ?? "";
+    const ok = await masterDelete("/api/master/sales-executives", id);
+    if (ok) { setSalesExecs((prev) => prev.filter((e) => e._id !== id)); toast(`Representative "${name}" deleted`, "warning"); }
+    else toast("Failed to delete representative", "error");
   }
 
   const tabs: { id: Tab; label: string }[] = [
@@ -180,7 +194,6 @@ export default function MasterDataManager() {
         <p className="text-sm text-gray-500 mt-0.5">Manage the dropdown options shown in the tracker form</p>
       </div>
 
-      {/* Sub-tabs */}
       <div className="flex gap-1 px-6 pt-4">
         {tabs.map((t) => (
           <button
@@ -200,17 +213,14 @@ export default function MasterDataManager() {
 
         {tab === "companies" && (
           <>
-            {/* Company Groups */}
             <MasterList title="Company Groups" items={companyGroups} onAdd={addGroup} onDelete={deleteGroup} loading={loadingGroups} />
 
-            {/* Companies under a group */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100">
                 <h3 className="font-semibold text-gray-800">Companies</h3>
                 <p className="text-xs text-gray-500 mt-0.5">Select a group to manage its companies</p>
               </div>
 
-              {/* Group selector */}
               <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
                 <select
                   value={selectedGroupId}
@@ -222,7 +232,6 @@ export default function MasterDataManager() {
                 </select>
               </div>
 
-              {/* Add company (requires group selected) */}
               <div className="px-5 py-3 border-b border-gray-100">
                 <div className="flex gap-2">
                   <input
@@ -244,7 +253,6 @@ export default function MasterDataManager() {
                 </div>
               </div>
 
-              {/* Company list */}
               <div className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
                 {loadingCompanies ? (
                   <div className="px-5 py-6 text-center text-sm text-gray-400">Loading...</div>

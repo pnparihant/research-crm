@@ -1,6 +1,7 @@
 "use client";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -19,13 +20,13 @@ function ResetForm() {
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get("token") ?? "";
+  const { toast } = useToast();
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [showCf, setShowCf] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
   if (!token) return (
@@ -34,9 +35,8 @@ function ResetForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password !== confirm) { setError("Passwords do not match"); return; }
-    if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
-    setError("");
+    if (password !== confirm) { toast("Passwords do not match", "error"); return; }
+    if (password.length < 8) { toast("Password must be at least 8 characters", "warning"); return; }
     setLoading(true);
 
     const res = await fetch("/api/auth/reset-password", {
@@ -47,7 +47,9 @@ function ResetForm() {
     const data = await res.json();
     setLoading(false);
 
-    if (!res.ok) { setError(data.error ?? "Reset failed"); return; }
+    if (!res.ok) { toast(data.error ?? "Reset failed", "error"); return; }
+
+    toast("Password updated successfully!", "success");
     setSuccess(true);
     setTimeout(() => router.push("/auth/login"), 2500);
   }
@@ -66,9 +68,6 @@ function ResetForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
-      )}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
         <div className="relative">

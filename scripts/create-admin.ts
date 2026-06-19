@@ -12,7 +12,7 @@ import * as dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 
 const MONGODB_URI = process.env.MONGODB_URI!;
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@cms.com";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@crm.com";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "Admin@1234";
 const ADMIN_NAME = process.env.ADMIN_NAME ?? "Admin";
 

@@ -1,12 +1,13 @@
 /**
- * Create or update a CMS user from outside the app.
+ * Create or update a CRM user from outside the app.
  *
  * Usage:
- *   node scripts/seed-user.js <email> <password> <name> [role]
+ *   node scripts/seed-user.js <email> <password> <name> [role] [phone]
  *
  * Examples:
  *   node scripts/seed-user.js john@arihant.com Pass@1234 "John Doe"
- *   node scripts/seed-user.js admin@cms.com    Pass@1234 "Admin"  admin
+ *   node scripts/seed-user.js john@arihant.com Pass@1234 "John Doe" user 9920869996
+ *   node scripts/seed-user.js admin@crm.com    Pass@1234 "Admin"    admin
  */
 const path = require("path");
 const fs = require("fs");
@@ -22,10 +23,10 @@ if (fs.existsSync(envFile)) {
   });
 }
 
-const [,, email, password, name, role = "user"] = process.argv;
+const [,, email, password, name, role = "user", phone = null] = process.argv;
 
 if (!email || !password || !name) {
-  console.error("Usage: node scripts/seed-user.js <email> <password> <name> [role]");
+  console.error("Usage: node scripts/seed-user.js <email> <password> <name> [role] [phone]");
   process.exit(1);
 }
 
@@ -34,6 +35,7 @@ const UserSchema = new mongoose.Schema({
   password:         { type: String, required: true },
   name:             { type: String, required: true },
   role:             { type: String, enum: ["user", "admin", "master_admin"], default: "user" },
+  phone:            { type: String, default: null },
   twoFactorSecret:  { type: String, default: null },
   twoFactorEnabled: { type: Boolean, default: false },
 }, { timestamps: true });
@@ -47,10 +49,10 @@ async function main() {
   const existing = await User.findOne({ email: email.toLowerCase() });
 
   if (existing) {
-    await User.updateOne({ email: email.toLowerCase() }, { $set: { password: hashed, name, role } });
+    await User.updateOne({ email: email.toLowerCase() }, { $set: { password: hashed, name, role, ...(phone ? { phone } : {}) } });
     console.log(`✓ Updated user: ${email}  role: ${role}`);
   } else {
-    await User.create({ email: email.toLowerCase(), password: hashed, name, role });
+    await User.create({ email: email.toLowerCase(), password: hashed, name, role, phone });
     console.log(`✓ Created user:`);
     console.log(`  Email:    ${email}`);
     console.log(`  Password: ${password}`);

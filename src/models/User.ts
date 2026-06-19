@@ -15,8 +15,11 @@ export interface IUser extends Document {
   twoFactorSecret: string | null;
   twoFactorEnabled: boolean;
   assignedClients: IAssignedClient[];
+  phone?: string | null;
   resetToken?: string | null;
   resetTokenExpiry?: Date | null;
+  loginOtp?: string | null;
+  loginOtpExpiry?: Date | null;
   createdAt: Date;
 }
 
@@ -39,8 +42,11 @@ const UserSchema = new Schema<IUser>(
     twoFactorSecret: { type: String, default: null },
     twoFactorEnabled: { type: Boolean, default: false },
     assignedClients: { type: [AssignedClientSchema], default: [] },
+    phone: { type: String, default: null },
     resetToken: { type: String, default: null },
     resetTokenExpiry: { type: Date, default: null },
+    loginOtp: { type: String, default: null },
+    loginOtpExpiry: { type: Date, default: null },
   },
   { timestamps: true }
 );

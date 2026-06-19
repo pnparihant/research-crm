@@ -52,7 +52,7 @@ export default function AdminDashboard({ session }: { session: Session }) {
               </svg>
             </div>
             <div>
-              <span className="text-xl font-bold text-gray-900">CMS Admin</span>
+              <span className="text-xl font-bold text-gray-900">CRM Admin</span>
               <span className="ml-2 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">Admin</span>
             </div>
           </div>

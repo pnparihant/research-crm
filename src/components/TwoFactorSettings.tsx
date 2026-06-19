@@ -2,9 +2,11 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
+import { useToast } from "@/components/ui/Toast";
 
 export default function TwoFactorSettings({ twoFactorEnabled }: { twoFactorEnabled: boolean }) {
   const { update } = useSession();
+  const { toast } = useToast();
   const [enabled, setEnabled] = useState(twoFactorEnabled);
   const [step, setStep] = useState<"idle" | "setup" | "verify">("idle");
   const [qrCode, setQrCode] = useState("");
@@ -12,7 +14,6 @@ export default function TwoFactorSettings({ twoFactorEnabled }: { twoFactorEnabl
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState("");
 
   async function startSetup() {
     setLoading(true);
@@ -20,7 +21,7 @@ export default function TwoFactorSettings({ twoFactorEnabled }: { twoFactorEnabl
     const res = await fetch("/api/2fa/setup");
     const data = await res.json();
     setLoading(false);
-    if (!res.ok) { setError(data.error); return; }
+    if (!res.ok) { toast(data.error ?? "Failed to load 2FA setup", "error"); return; }
     setQrCode(data.qrCode);
     setSecret(data.secret);
     setStep("setup");
@@ -39,28 +40,13 @@ export default function TwoFactorSettings({ twoFactorEnabled }: { twoFactorEnabl
     const data = await res.json();
     setLoading(false);
 
-    if (!res.ok) { setError(data.error ?? "Invalid code"); return; }
+    if (!res.ok) { setError(data.error ?? "Invalid code"); toast(data.error ?? "Invalid code", "error"); return; }
 
     setEnabled(true);
     setStep("idle");
     setOtp("");
-    setSuccess("Two-factor authentication enabled successfully!");
     await update({ twoFactorVerified: true });
-    setTimeout(() => setSuccess(""), 3000);
-  }
-
-  async function disableTwoFactor() {
-    if (!confirm("Disable two-factor authentication? This will make your account less secure.")) return;
-    setLoading(true);
-    setError("");
-
-    const res = await fetch("/api/2fa/disable", { method: "POST" });
-    setLoading(false);
-    if (!res.ok) { setError("Failed to disable 2FA"); return; }
-
-    setEnabled(false);
-    setSuccess("Two-factor authentication disabled.");
-    setTimeout(() => setSuccess(""), 3000);
+    toast("Two-factor authentication enabled successfully", "success");
   }
 
   return (
@@ -82,15 +68,6 @@ export default function TwoFactorSettings({ twoFactorEnabled }: { twoFactorEnabl
             {enabled ? "Enabled" : "Disabled"}
           </span>
         </div>
-
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-5 text-sm flex items-center gap-2">
-            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            {success}
-          </div>
-        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-5 text-sm">
@@ -115,17 +92,8 @@ export default function TwoFactorSettings({ twoFactorEnabled }: { twoFactorEnabl
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="bg-green-50 rounded-xl p-4 text-sm text-green-700">
-                  Your account is protected with two-factor authentication. You will need your authenticator app each time you sign in.
-                </div>
-                <button
-                  onClick={disableTwoFactor}
-                  disabled={loading}
-                  className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold px-6 py-2.5 rounded-lg border border-red-200 transition-colors"
-                >
-                  Disable 2FA
-                </button>
+              <div className="bg-green-50 rounded-xl p-4 text-sm text-green-700">
+                Your account is protected with two-factor authentication. You will need your authenticator app each time you sign in.
               </div>
             )}
           </div>
@@ -143,18 +111,14 @@ export default function TwoFactorSettings({ twoFactorEnabled }: { twoFactorEnabl
             </div>
 
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">
-                Or enter this key manually:
-              </p>
+              <p className="text-sm font-medium text-gray-700 mb-2">Or enter this key manually:</p>
               <code className="block bg-gray-100 px-4 py-2.5 rounded-lg text-sm font-mono text-gray-700 break-all">
                 {secret}
               </code>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">
-                Step 2: Enter the 6-digit code to confirm
-              </p>
+              <p className="text-sm font-medium text-gray-700 mb-2">Step 2: Enter the 6-digit code to confirm</p>
               <div className="flex gap-3 flex-wrap">
                 <input
                   type="text"

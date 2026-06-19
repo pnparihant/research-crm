@@ -5,7 +5,6 @@ import { signOut } from "next-auth/react";
 import FillForm from "./FillForm";
 import BulkUpload from "./BulkUpload";
 import History from "./History";
-import TwoFactorSettings from "./TwoFactorSettings";
 import ChangePassword from "./ChangePassword";
 
 type Tab = "fill" | "bulk" | "history" | "settings";
@@ -68,7 +67,7 @@ export default function DashboardClient({ session }: { session: Session }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
             </div>
-            <span className="text-xl font-bold text-gray-900">CMS</span>
+            <span className="text-xl font-bold text-gray-900">CRM</span>
           </div>
           <div className="flex items-center gap-4">
             {/* Show Arihant Representative name prominently */}
@@ -76,14 +75,6 @@ export default function DashboardClient({ session }: { session: Session }) {
               <p className="text-sm font-semibold text-gray-900">{session.user.name}</p>
               <p className="text-xs text-teal-600 font-medium">Arihant Representative</p>
             </div>
-            {session.user.twoFactorEnabled && (
-              <span className="hidden sm:flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
-                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0110 1.944 11.954 11.954 0 0117.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                2FA On
-              </span>
-            )}
             <button
               onClick={async () => { await signOut({ redirect: false }); window.location.href = "/auth/login"; }}
               className="text-sm text-gray-500 hover:text-red-600 font-medium transition-colors"
@@ -117,12 +108,7 @@ export default function DashboardClient({ session }: { session: Session }) {
         {activeTab === "fill" && <FillForm onSubmitted={onFormSubmitted} userName={session.user.name} />}
         {activeTab === "bulk" && <BulkUpload onSubmitted={onFormSubmitted} userName={session.user.name} />}
         {activeTab === "history" && <History key={refreshKey} />}
-        {activeTab === "settings" && (
-          <div className="space-y-6">
-            <TwoFactorSettings twoFactorEnabled={session.user.twoFactorEnabled} />
-            <ChangePassword accentColor="teal" />
-          </div>
-        )}
+        {activeTab === "settings" && <ChangePassword accentColor="teal" />}
       </main>
     </div>
   );
