@@ -15,6 +15,9 @@ const EMPTY_FORM = {
   cmpTarget: "",
   recommendation: "" as "Buy" | "Sell" | "Hold" | "",
   analystName: "",
+  buySideAnalystDesignation: "",
+  rationale: "",
+  feedback: "",
 };
 
 const MODES = ["Phone", "Online Meet", "Physical"] as const;
@@ -204,6 +207,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                       <option>Institutional Equity Sales Manager</option>
                       <option>Equity Research Associate</option>
                       <option>Sr Manager Sales</option>
+                      <option>Buy Side Analyst</option>
                       <option>Intern</option>
                     </optgroup>
                     <optgroup label="Institutional Dept">
@@ -245,9 +249,24 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                 )}
               </div>
 
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Badge n={5} /> Buy Side Analyst <span className="text-red-500">*</span>
+                </label>
+                <input type="text" name="analystName" value={form.analystName} onChange={handleChange} required placeholder="Arihant research analyst" className={inputCls} />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Badge n={6} /> Buy Side Analyst Designation
+                </label>
+                <input type="text" name="buySideAnalystDesignation" value={form.buySideAnalystDesignation} onChange={handleChange} placeholder="e.g. Portfolio Manager, Fund Manager…" className={inputCls} />
+              </div>
+
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Badge n={5} /> Mode of Communication <span className="text-red-500">*</span>
+                  <Badge n={7} /> Mode of Communication <span className="text-red-500">*</span>
+
                 </label>
                 <div className="flex gap-3 flex-wrap">
                   {MODES.map((mode) => {
@@ -293,7 +312,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                 {/* Company — searchable typeahead */}
                 <div className="space-y-1.5" ref={stockRef}>
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Badge n={6} /> Company <span className="text-red-500">*</span>
+                    <Badge n={8} /> Company <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     {stockSelected ? (
@@ -355,7 +374,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                 {/* Sector — auto-filled from stock selection */}
                 <div className="space-y-1.5">
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                    <Badge n={7} /> Sector
+                    <Badge n={9} /> Sector
                     {stockSelected && <span className="text-xs text-teal-600 font-normal">(auto-filled)</span>}
                   </label>
                   <input
@@ -371,7 +390,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
 
               <div className="space-y-1.5 sm:max-w-xs">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Badge n={8} /> CMP &amp; Target <span className="text-red-500">*</span>
+                  <Badge n={10} /> CMP &amp; Target <span className="text-red-500">*</span>
                 </label>
                 <input type="text" name="cmpTarget" value={form.cmpTarget} onChange={handleChange} required placeholder="e.g. CMP 540 / Target 650" className={inputCls} />
               </div>
@@ -386,7 +405,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
 
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Badge n={9} /> Buy / Sell / Hold <span className="text-red-500">*</span>
+                  <Badge n={11} /> Buy / Sell / Hold <span className="text-red-500">*</span>
                 </label>
                 <div className="flex gap-3 flex-wrap">
                   {(["Buy", "Sell", "Hold"] as const).map((opt) => {
@@ -410,13 +429,25 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                 </div>
               </div>
 
+            </div>
+          </div>
+
+          {/* Section 5: Rationale & Feedback */}
+          <div className="rounded-xl border border-gray-200 overflow-hidden">
+            <SectionLabel title="Rationale & Feedback" />
+            <div className="p-5 space-y-5">
               <div className="space-y-1.5">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Badge n={10} /> Analyst Name <span className="text-red-500">*</span>
+                  <Badge n={12} /> Rationale
                 </label>
-                <input type="text" name="analystName" value={form.analystName} onChange={handleChange} required placeholder="Arihant research analyst" className={inputCls} />
+                <textarea name="rationale" value={form.rationale} onChange={handleChange} rows={3} placeholder="Brief rationale for the recommendation…" className={`${inputCls} resize-none`} />
               </div>
-
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Badge n={13} /> Feedback
+                </label>
+                <textarea name="feedback" value={form.feedback} onChange={handleChange} rows={3} placeholder="Client feedback or response…" className={`${inputCls} resize-none`} />
+              </div>
             </div>
           </div>
 

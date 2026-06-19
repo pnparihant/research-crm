@@ -1,30 +1,53 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/Toast";
 
 interface AdminUser {
   _id: string; name: string; email: string;
   role: string; twoFactorEnabled: boolean; createdAt: string;
 }
 
+interface EmployeeUser {
+  _id: string; name: string; email: string; createdAt: string;
+}
+
 export default function ManageAdmins() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [employees, setEmployees] = useState<EmployeeUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+
+  // Promote
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [promoteTarget, setPromoteTarget] = useState<EmployeeUser | null>(null);
+  const [promoteConfirm, setPromoteConfirm] = useState(false);
+  const [promoting, setPromoting] = useState(false);
+
+  // Demote
+  const [demoteTarget, setDemoteTarget] = useState<AdminUser | null>(null);
+  const [demoteConfirm, setDemoteConfirm] = useState(false);
+  const [demoting, setDemoting] = useState(false);
+
+  const { toast } = useToast();
 
   useEffect(() => {
-    fetch("/api/master-admin/admins").then((r) => r.json())
-      .then((d) => { setAdmins(Array.isArray(d) ? d : []); setLoading(false); });
+    Promise.all([
+      fetch("/api/master-admin/admins").then((r) => r.json()),
+      fetch("/api/admin/users").then((r) => r.json()),
+    ]).then(([a, u]) => {
+      setAdmins(Array.isArray(a) ? a : []);
+      setEmployees(Array.isArray(u) ? u : []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(""); setSaving(true);
-
     const res = await fetch("/api/master-admin/admins", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -32,19 +55,136 @@ export default function ManageAdmins() {
     });
     const data = await res.json();
     setSaving(false);
-
     if (!res.ok) { setError(data.error ?? "Failed to create admin"); return; }
-
     setAdmins((prev) => [data, ...prev]);
     setForm({ name: "", email: "", password: "" });
     setShowForm(false);
-    setSuccess(`Admin "${data.name}" created successfully`);
-    setTimeout(() => setSuccess(""), 3000);
+    toast(`Admin "${data.name}" created successfully`, "success");
   }
 
+  async function handlePromote() {
+    if (!promoteTarget) return;
+    setPromoting(true);
+    try {
+      const res = await fetch("/api/master-admin/admins", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: promoteTarget._id, action: "promote" }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error ?? "Promotion failed", "error"); return; }
+      // Move from employees list to admins list
+      setAdmins((prev) => [{ ...data, twoFactorEnabled: false, createdAt: promoteTarget.createdAt }, ...prev]);
+      setEmployees((prev) => prev.filter((e) => e._id !== promoteTarget._id));
+      toast(`${promoteTarget.name} has been promoted to Admin`, "success");
+      setPromoteTarget(null);
+      setEmployeeSearch("");
+    } finally {
+      setPromoting(false);
+      setPromoteConfirm(false);
+    }
+  }
+
+  async function handleDemote() {
+    if (!demoteTarget) return;
+    setDemoting(true);
+    try {
+      const res = await fetch("/api/master-admin/admins", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: demoteTarget._id, action: "demote" }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast(data.error ?? "Demotion failed", "error"); return; }
+      // Move from admins list to employees list
+      setAdmins((prev) => prev.filter((a) => a._id !== demoteTarget._id));
+      setEmployees((prev) => [{ _id: data._id, name: data.name, email: data.email, createdAt: demoteTarget.createdAt }, ...prev]);
+      toast(`${demoteTarget.name} has been demoted to Employee`, "warning");
+      setDemoteTarget(null);
+    } finally {
+      setDemoting(false);
+      setDemoteConfirm(false);
+    }
+  }
+
+  const filteredEmployees = employees.filter((e) => {
+    const q = employeeSearch.toLowerCase();
+    return !q || e.name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q);
+  });
+
   return (
+    <>
+    {/* Promote confirmation modal */}
+    {promoteConfirm && promoteTarget && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-purple-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Promote to Admin?</h3>
+              <p className="text-sm text-gray-500">{promoteTarget.name} · {promoteTarget.email}</p>
+            </div>
+          </div>
+          <p className="text-sm text-gray-600 mb-5">
+            This will give <span className="font-semibold">{promoteTarget.name}</span> full admin access — they will be able to manage master data and view all submissions.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setPromoteConfirm(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+              Cancel
+            </button>
+            <button
+              onClick={handlePromote}
+              disabled={promoting}
+              className="px-4 py-2 text-sm font-semibold text-white bg-purple-700 hover:bg-purple-800 disabled:opacity-60 rounded-lg transition-colors"
+            >
+              {promoting ? "Promoting…" : "Yes, promote"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Demote confirmation modal */}
+    {demoteConfirm && demoteTarget && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Demote to Employee?</h3>
+              <p className="text-sm text-gray-500">{demoteTarget.name} · {demoteTarget.email}</p>
+            </div>
+          </div>
+          <p className="text-sm text-gray-600 mb-5">
+            <span className="font-semibold">{demoteTarget.name}</span> will lose admin access and revert to a regular employee account.
+          </p>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setDemoteConfirm(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+              Cancel
+            </button>
+            <button
+              onClick={handleDemote}
+              disabled={demoting}
+              className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 rounded-lg transition-colors"
+            >
+              {demoting ? "Demoting…" : "Yes, demote"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     <div className="space-y-5 max-w-3xl">
-      {/* Header */}
+
+      {/* Create new admin */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-xl font-semibold text-gray-900">Admin Accounts</h2>
@@ -60,14 +200,6 @@ export default function ManageAdmins() {
         </div>
         <p className="text-sm text-gray-500">Admins can manage master data and view all submissions</p>
 
-        {success && (
-          <div className="mt-4 bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-2.5 text-sm flex items-center gap-2">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-            {success}
-          </div>
-        )}
-
-        {/* Create form */}
         {showForm && (
           <form onSubmit={handleCreate} className="mt-5 p-5 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
             <h3 className="text-sm font-semibold text-gray-700">New Admin Details</h3>
@@ -102,7 +234,7 @@ export default function ManageAdmins() {
             </div>
             <div className="flex gap-3 pt-1">
               <button type="submit" disabled={saving} className="px-5 py-2 bg-purple-700 hover:bg-purple-800 disabled:bg-purple-400 text-white text-sm font-medium rounded-lg transition-colors">
-                {saving ? "Creating..." : "Create Admin"}
+                {saving ? "Creating…" : "Create Admin"}
               </button>
               <button type="button" onClick={() => { setShowForm(false); setError(""); }} className="px-5 py-2 text-gray-500 hover:text-gray-700 text-sm font-medium">
                 Cancel
@@ -112,10 +244,72 @@ export default function ManageAdmins() {
         )}
       </div>
 
+      {/* Promote employee */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <h3 className="text-base font-semibold text-gray-900 mb-1">Promote an Employee</h3>
+        <p className="text-sm text-gray-500 mb-4">Search for an existing employee and grant them admin access.</p>
+
+        <div className="relative mb-3">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search by name or email…"
+            value={employeeSearch}
+            onChange={(e) => { setEmployeeSearch(e.target.value); setPromoteTarget(null); }}
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+
+        {employeeSearch && (
+          <div className="border border-gray-200 rounded-xl overflow-hidden mb-3">
+            {filteredEmployees.length === 0 ? (
+              <p className="text-sm text-gray-400 px-4 py-3">No employees found matching &ldquo;{employeeSearch}&rdquo;</p>
+            ) : (
+              <ul className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                {filteredEmployees.map((e) => (
+                  <li key={e._id}>
+                    <button
+                      onClick={() => { setPromoteTarget(e); setEmployeeSearch(e.name); }}
+                      className={`w-full text-left px-4 py-3 hover:bg-purple-50 transition-colors ${promoteTarget?._id === e._id ? "bg-purple-50" : ""}`}
+                    >
+                      <p className="text-sm font-medium text-gray-900">{e.name}</p>
+                      <p className="text-xs text-gray-400">{e.email}</p>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {promoteTarget && (
+          <div className="flex items-center justify-between bg-purple-50 border border-purple-200 rounded-xl px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-purple-900">{promoteTarget.name}</p>
+              <p className="text-xs text-purple-600">{promoteTarget.email}</p>
+            </div>
+            <button
+              onClick={() => setPromoteConfirm(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white text-xs font-semibold rounded-lg transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+              </svg>
+              Promote to Admin
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Admin list */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h3 className="text-base font-semibold text-gray-900">Current Admins</h3>
+        </div>
         {loading ? (
-          <div className="p-10 text-center text-gray-400 text-sm">Loading admins...</div>
+          <div className="p-10 text-center text-gray-400 text-sm">Loading…</div>
         ) : admins.length === 0 ? (
           <div className="p-10 text-center text-gray-400 text-sm">No admin accounts yet. Add one above.</div>
         ) : (
@@ -125,7 +319,8 @@ export default function ManageAdmins() {
                 <th className="text-left px-5 py-3 font-semibold text-gray-600">Name</th>
                 <th className="text-left px-5 py-3 font-semibold text-gray-600">Email</th>
                 <th className="text-left px-5 py-3 font-semibold text-gray-600">2FA</th>
-                <th className="text-left px-5 py-3 font-semibold text-gray-600">Created</th>
+                <th className="text-left px-5 py-3 font-semibold text-gray-600">Joined</th>
+                <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -141,6 +336,14 @@ export default function ManageAdmins() {
                   <td className="px-5 py-3 text-gray-400">
                     {new Date(a.createdAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}
                   </td>
+                  <td className="px-5 py-3 text-right">
+                    <button
+                      onClick={() => { setDemoteTarget(a); setDemoteConfirm(true); }}
+                      className="text-xs text-red-400 hover:text-red-600 font-medium hover:underline transition-colors"
+                    >
+                      Demote
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -148,5 +351,6 @@ export default function ManageAdmins() {
         )}
       </div>
     </div>
+    </>
   );
 }

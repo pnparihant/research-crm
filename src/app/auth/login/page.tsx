@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 type LoginTab = "client" | "admin";
-type Step = "credentials" | "2fa";
+type Step = "credentials" | "2fa" | "forgot";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -65,6 +65,9 @@ export default function LoginPage() {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotResetUrl, setForgotResetUrl] = useState("");
 
   function switchTab(tab: LoginTab) {
     setActiveTab(tab);
@@ -74,6 +77,25 @@ export default function LoginPage() {
     setError("");
     setStep("credentials");
     setShowPassword(false);
+    setForgotSent(false);
+    setForgotEmail("");
+    setForgotResetUrl("");
+  }
+
+  async function handleForgot(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const res = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: forgotEmail }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) { setError(data.error ?? "Something went wrong"); return; }
+    setForgotSent(true);
+    if (data.resetUrl) setForgotResetUrl(data.resetUrl);
   }
 
   async function handleCredentials(e: React.FormEvent) {
@@ -148,11 +170,13 @@ export default function LoginPage() {
         <div className="p-8">
           <div className="text-center mb-7">
             <h1 className="text-xl font-bold text-gray-900">
-              {step === "2fa" ? "Two-Factor Authentication" : cfg.label}
+              {step === "2fa" ? "Two-Factor Authentication" : step === "forgot" ? "Forgot Password" : cfg.label}
             </h1>
             <p className="text-gray-400 text-sm mt-1">
               {step === "2fa"
                 ? "Enter the 6-digit code from your authenticator app"
+                : step === "forgot"
+                ? "Enter your email to receive a reset link"
                 : "Enter your credentials to continue"}
             </p>
             {step === "2fa" && (
@@ -182,7 +206,16 @@ export default function LoginPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium text-gray-700">Password</label>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotEmail(email); setStep("forgot"); setError(""); setForgotSent(false); setForgotResetUrl(""); }}
+                    className="text-xs text-teal-600 hover:text-teal-700 font-medium"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -201,7 +234,7 @@ export default function LoginPage() {
                 {loading ? "Signing in..." : "Sign In"}
               </button>
             </form>
-          ) : (
+          ) : step === "2fa" ? (
             <form onSubmit={handle2FA} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Authentication Code</label>
@@ -223,6 +256,50 @@ export default function LoginPage() {
                 ← Back
               </button>
             </form>
+          ) : (
+            <div className="space-y-5">
+              {!forgotSent ? (
+                <form onSubmit={handleForgot} className="space-y-5">
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
+                    <input
+                      type="email"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      required
+                      autoFocus
+                      className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ${cfg.ring}`}
+                      placeholder={cfg.placeholder}
+                    />
+                  </div>
+                  <button type="submit" disabled={loading} className={`w-full ${cfg.btn} text-white font-semibold py-2.5 rounded-lg transition-colors`}>
+                    {loading ? "Sending…" : "Send Reset Link"}
+                  </button>
+                  <button type="button" onClick={() => { setStep("credentials"); setError(""); }} className="w-full text-gray-400 hover:text-gray-600 text-sm">
+                    ← Back to login
+                  </button>
+                </form>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-4 text-sm text-green-800">
+                    <p className="font-semibold mb-1">Check your email</p>
+                    <p>If <span className="font-medium">{forgotEmail}</span> is registered, a reset link has been sent. It expires in 1 hour.</p>
+                  </div>
+                  {forgotResetUrl && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-4 text-sm">
+                      <p className="text-amber-800 font-semibold mb-2">Dev mode — reset link:</p>
+                      <a href={forgotResetUrl} className="text-teal-600 break-all text-xs hover:underline">{forgotResetUrl}</a>
+                    </div>
+                  )}
+                  <button type="button" onClick={() => { setStep("credentials"); setForgotSent(false); setError(""); }} className="w-full text-gray-400 hover:text-gray-600 text-sm">
+                    ← Back to login
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

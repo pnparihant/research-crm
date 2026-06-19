@@ -170,7 +170,7 @@ export default function MasterDataManager() {
   const tabs: { id: Tab; label: string }[] = [
     { id: "sectors", label: "Sectors" },
     { id: "companies", label: "Companies" },
-    { id: "salesExecutives", label: "Sales Executives" },
+    { id: "salesExecutives", label: "Arihant Representatives" },
   ];
 
   return (
@@ -276,7 +276,7 @@ export default function MasterDataManager() {
         )}
 
         {tab === "salesExecutives" && (
-          <MasterList title="Sales Executives" items={salesExecs} onAdd={addExec} onDelete={deleteExec} loading={loadingExecs} />
+          <MasterList title="Arihant Representatives" items={salesExecs} onAdd={addExec} onDelete={deleteExec} loading={loadingExecs} />
         )}
       </div>
     </div>

@@ -4,7 +4,7 @@
  * 1. Fill in your connection details below (or set env vars)
  * 2. Run: node scripts/explore-mssql.js
  */
-require("dotenv").config({ path: ".env.local" });
+require("dotenv").config({ path: require("path").resolve(__dirname, "../.env.local") });
 const sql = require("mssql");
 
 const config = {

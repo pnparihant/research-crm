@@ -11,14 +11,15 @@ const CompanyGroupSchema = new Schema<ICompanyGroup>({ name: { type: String, req
 export const CompanyGroup = mongoose.models.CompanyGroup ?? mongoose.model<ICompanyGroup>("CompanyGroup", CompanyGroupSchema);
 
 // ── Company (belongs to a group) ─────────────────────────────────────────────
-export interface ICompany extends Document { name: string; groupId: mongoose.Types.ObjectId }
+export interface ICompany extends Document { name: string; groupId: mongoose.Types.ObjectId; sector?: string }
 const CompanySchema = new Schema<ICompany>({
   name:    { type: String, required: true, trim: true },
   groupId: { type: Schema.Types.ObjectId, ref: "CompanyGroup", required: true },
+  sector:  { type: String, default: "" },
 }, { timestamps: true });
 export const Company = mongoose.models.Company ?? mongoose.model<ICompany>("Company", CompanySchema);
 
-// ── Sales Executive ───────────────────────────────────────────────────────────
+// ── Arihant Representative ───────────────────────────────────────────────────────────
 export interface ISalesExecutive extends Document { name: string }
 const SalesExecutiveSchema = new Schema<ISalesExecutive>({ name: { type: String, required: true, unique: true, trim: true } }, { timestamps: true });
 export const SalesExecutive = mongoose.models.SalesExecutive ?? mongoose.model<ISalesExecutive>("SalesExecutive", SalesExecutiveSchema);

@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-require("dotenv").config({ path: ".env.local" });
+require("dotenv").config({ path: require("path").resolve(__dirname, "../.env.local") });
 
 async function migrate() {
   await mongoose.connect(process.env.MONGODB_URI);

@@ -14,6 +14,26 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(admins);
 }
 
+export async function PATCH(req: NextRequest) {
+  const token = await getToken({ req });
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (token.role !== "master_admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { userId, action } = await req.json();
+  if (!userId || !action) return NextResponse.json({ error: "userId and action required" }, { status: 400 });
+  if (!["promote", "demote"].includes(action)) return NextResponse.json({ error: "action must be promote or demote" }, { status: 400 });
+
+  await connectDB();
+  const user = await User.findById(userId);
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  if (action === "promote" && user.role !== "user") return NextResponse.json({ error: "User is not a regular employee" }, { status: 400 });
+  if (action === "demote" && user.role !== "admin") return NextResponse.json({ error: "User is not an admin" }, { status: 400 });
+
+  user.role = action === "promote" ? "admin" : "user";
+  await user.save();
+  return NextResponse.json({ _id: user._id, name: user.name, email: user.email, role: user.role });
+}
+
 export async function POST(req: NextRequest) {
   const token = await getToken({ req });
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

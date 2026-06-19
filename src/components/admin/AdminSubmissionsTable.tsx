@@ -20,6 +20,9 @@ interface Row {
   cmpTarget: string;
   recommendation: "Buy" | "Sell" | "Hold";
   analystName: string;
+  buySideAnalystDesignation: string;
+  rationale: string;
+  feedback: string;
   submittedBy: string;
   submittedByEmail: string;
   submittedAt: string;
@@ -62,6 +65,9 @@ export default function AdminSubmissionsTable() {
           cmpTarget: (s.cmpTarget as string) ?? "",
           recommendation: s.recommendation as "Buy" | "Sell" | "Hold",
           analystName: (s.analystName as string) ?? "",
+          buySideAnalystDesignation: (s.buySideAnalystDesignation as string) ?? "",
+          rationale: (s.rationale as string) ?? "",
+          feedback: (s.feedback as string) ?? "",
           submittedBy: user?.name ?? "—",
           submittedByEmail: user?.email ?? "—",
           submittedAt: new Date(s.submittedAt as string).toLocaleString("en-IN"),
@@ -99,12 +105,24 @@ export default function AdminSubmissionsTable() {
 
   function exportExcel() {
     if (!filteredRows.length) return;
-    const data = filteredRows.map((r) => ({
-      Date: r.date, "Sales Person": r.salesPerson, "Client Name": r.clientName,
-      Designation: r.designation, "Mode of Communication": r.modeOfCommunication,
-      Company: r.company, Sector: r.sector, "CMP & Target": r.cmpTarget,
-      Recommendation: r.recommendation, "Analyst Name": r.analystName,
-      "Submitted By": r.submittedBy, Email: r.submittedByEmail, "Submitted At": r.submittedAt,
+    const data = filteredRows.map((r, i) => ({
+      "Sr.No": i + 1,
+      "Date": r.date,
+      "Arihant Representative": r.salesPerson,
+      "Designation": r.designation,
+      "Client Name": r.clientName,
+      "Buy Side Analyst": r.analystName,
+      "Buy Side Analyst Designation": r.buySideAnalystDesignation,
+      "Mode of Communication": r.modeOfCommunication,
+      "Company": r.company,
+      "Sector": r.sector,
+      "CMP & Target": r.cmpTarget,
+      "Buy / Sell / Hold": r.recommendation,
+      "Rationale": r.rationale,
+      "Feedback": r.feedback,
+      "Submitted By": r.submittedBy,
+      "Email": r.submittedByEmail,
+      "Submitted At": r.submittedAt,
     }));
     const ws = utils.json_to_sheet(data);
     ws["!cols"] = Object.keys(data[0]).map((k) => ({ wch: Math.max(k.length, ...data.map((r) => String(r[k as keyof typeof r] ?? "").length)) + 2 }));
@@ -117,7 +135,7 @@ export default function AdminSubmissionsTable() {
 
   const columns: GridColDef[] = [
     { field: "date", headerName: "Date", width: 110, filterOperators: strOps },
-    { field: "salesPerson", headerName: "Sales Person", width: 160, filterOperators: strOps },
+    { field: "salesPerson", headerName: "Arihant Representative", width: 160, filterOperators: strOps },
     { field: "clientName", headerName: "Client", width: 200, filterOperators: strOps },
     { field: "designation", headerName: "Designation", width: 140, filterOperators: strOps },
     { field: "modeOfCommunication", headerName: "Mode", width: 130, type: "singleSelect", valueOptions: ["Phone", "Online Meet", "Physical"], filterOperators: getGridSingleSelectOperators() },
@@ -128,7 +146,10 @@ export default function AdminSubmissionsTable() {
       field: "recommendation", headerName: "Rec.", width: 100, type: "singleSelect", valueOptions: ["Buy", "Sell", "Hold"], filterOperators: getGridSingleSelectOperators(),
       renderCell: (p: GridRenderCellParams) => <Chip label={p.value as string} color={REC_COLOR[p.value as string] ?? "default"} size="small" sx={{ fontWeight: 600, fontSize: 12 }} />,
     },
-    { field: "analystName", headerName: "Analyst", width: 150, filterOperators: strOps },
+    { field: "analystName", headerName: "Buy Side Analyst", width: 160, filterOperators: strOps },
+    { field: "buySideAnalystDesignation", headerName: "Buy Side Analyst Designation", width: 200, filterOperators: strOps },
+    { field: "rationale", headerName: "Rationale", width: 200, filterOperators: strOps },
+    { field: "feedback", headerName: "Feedback", width: 200, filterOperators: strOps },
     {
       field: "submittedBy", headerName: "Submitted By", width: 150, filterOperators: strOps,
       renderCell: (p: GridRenderCellParams) => (
@@ -220,7 +241,10 @@ export default function AdminSubmissionsTable() {
                       ["Mode", r.modeOfCommunication],
                       ["Sector", r.sector],
                       ["CMP & Target", r.cmpTarget],
-                      ["Analyst", r.analystName],
+                      ["Buy Side Analyst", r.analystName],
+                      ["BS Analyst Designation", r.buySideAnalystDesignation],
+                      ["Rationale", r.rationale],
+                      ["Feedback", r.feedback],
                       ["Submitted By", r.submittedBy],
                       ["Submitted At", r.submittedAt],
                     ].map(([label, val]) => (

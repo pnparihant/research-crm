@@ -3,11 +3,12 @@ import { useState } from "react";
 import { Session } from "next-auth";
 import { signOut } from "next-auth/react";
 import FillForm from "./FillForm";
+import BulkUpload from "./BulkUpload";
 import History from "./History";
 import TwoFactorSettings from "./TwoFactorSettings";
 import ChangePassword from "./ChangePassword";
 
-type Tab = "fill" | "history" | "settings";
+type Tab = "fill" | "bulk" | "history" | "settings";
 
 export default function DashboardClient({ session }: { session: Session }) {
   const [activeTab, setActiveTab] = useState<Tab>("fill");
@@ -25,6 +26,15 @@ export default function DashboardClient({ session }: { session: Session }) {
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      ),
+    },
+    {
+      id: "bulk",
+      label: "Bulk Upload",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
         </svg>
       ),
     },
@@ -61,10 +71,10 @@ export default function DashboardClient({ session }: { session: Session }) {
             <span className="text-xl font-bold text-gray-900">CMS</span>
           </div>
           <div className="flex items-center gap-4">
-            {/* Show sales executive name prominently */}
+            {/* Show Arihant Representative name prominently */}
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold text-gray-900">{session.user.name}</p>
-              <p className="text-xs text-teal-600 font-medium">Sales Executive</p>
+              <p className="text-xs text-teal-600 font-medium">Arihant Representative</p>
             </div>
             {session.user.twoFactorEnabled && (
               <span className="hidden sm:flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
@@ -105,6 +115,7 @@ export default function DashboardClient({ session }: { session: Session }) {
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {activeTab === "fill" && <FillForm onSubmitted={onFormSubmitted} userName={session.user.name} />}
+        {activeTab === "bulk" && <BulkUpload onSubmitted={onFormSubmitted} userName={session.user.name} />}
         {activeTab === "history" && <History key={refreshKey} />}
         {activeTab === "settings" && (
           <div className="space-y-6">

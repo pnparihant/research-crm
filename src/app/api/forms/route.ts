@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { date, salesPerson, clientName, designation, modeOfCommunication, company, sector, cmpTarget, recommendation, analystName } = body;
+  const { date, salesPerson, clientName, designation, modeOfCommunication, company, sector, cmpTarget, recommendation, analystName, buySideAnalystDesignation, rationale, feedback } = body;
 
   if (!date || !salesPerson || !clientName || !designation || !modeOfCommunication || !company || !cmpTarget || !recommendation || !analystName) {
     return NextResponse.json({ error: "All fields are required" }, { status: 400 });
@@ -39,6 +39,9 @@ export async function POST(req: NextRequest) {
     cmpTarget,
     recommendation,
     analystName,
+    buySideAnalystDesignation: buySideAnalystDesignation ?? "",
+    rationale: rationale ?? "",
+    feedback: feedback ?? "",
     submittedAt: new Date(),
   });
 

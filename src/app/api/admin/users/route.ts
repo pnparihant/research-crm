@@ -74,7 +74,7 @@ export async function PATCH(req: NextRequest) {
   } else if (action === "remove") {
     await col.updateOne(
       { _id: userId },
-      { $pull: { assignedClients: { client: cId } } }
+      { $pull: { assignedClients: { client: cId } as unknown as never } }
     );
   } else {
     return NextResponse.json({ error: "action must be add or remove" }, { status: 400 });

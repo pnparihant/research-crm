@@ -6,6 +6,7 @@ import {
   GridFilterModel, getGridStringOperators, getGridSingleSelectOperators,
 } from "@mui/x-data-grid";
 import { Chip, Tooltip, Box } from "@mui/material";
+import { useToast } from "@/components/ui/Toast";
 import { utils, writeFile } from "xlsx";
 
 interface Row {
@@ -20,6 +21,9 @@ interface Row {
   cmpTarget: string;
   recommendation: "Buy" | "Sell" | "Hold";
   analystName: string;
+  buySideAnalystDesignation: string;
+  rationale: string;
+  feedback: string;
   submittedBy: string;
   submittedByEmail: string;
   submittedAt: string;
@@ -45,6 +49,9 @@ export default function MasterAdminSubmissions() {
   const [filterModel, setFilterModel] = useState<GridFilterModel>({ items: [] });
   const [search, setSearch] = useState("");
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetch("/api/master-admin/submissions").then((r) => r.json()).then((data: Record<string, unknown>[]) => {
@@ -62,6 +69,9 @@ export default function MasterAdminSubmissions() {
           cmpTarget: (s.cmpTarget as string) ?? "",
           recommendation: s.recommendation as "Buy" | "Sell" | "Hold",
           analystName: (s.analystName as string) ?? "",
+          buySideAnalystDesignation: (s.buySideAnalystDesignation as string) ?? "",
+          rationale: (s.rationale as string) ?? "",
+          feedback: (s.feedback as string) ?? "",
           submittedBy: user?.name ?? "—",
           submittedByEmail: user?.email ?? "—",
           submittedAt: new Date(s.submittedAt as string).toLocaleString("en-IN"),
@@ -99,12 +109,24 @@ export default function MasterAdminSubmissions() {
 
   function exportExcel() {
     if (!filteredRows.length) return;
-    const data = filteredRows.map((r) => ({
-      Date: r.date, "Sales Person": r.salesPerson, "Client Name": r.clientName,
-      Designation: r.designation, "Mode of Communication": r.modeOfCommunication,
-      Company: r.company, Sector: r.sector, "CMP & Target": r.cmpTarget,
-      Recommendation: r.recommendation, "Analyst Name": r.analystName,
-      "Submitted By": r.submittedBy, Email: r.submittedByEmail, "Submitted At": r.submittedAt,
+    const data = filteredRows.map((r, i) => ({
+      "Sr.No": i + 1,
+      "Date": r.date,
+      "Arihant Representative": r.salesPerson,
+      "Designation": r.designation,
+      "Client Name": r.clientName,
+      "Buy Side Analyst": r.analystName,
+      "Buy Side Analyst Designation": r.buySideAnalystDesignation,
+      "Mode of Communication": r.modeOfCommunication,
+      "Company": r.company,
+      "Sector": r.sector,
+      "CMP & Target": r.cmpTarget,
+      "Buy / Sell / Hold": r.recommendation,
+      "Rationale": r.rationale,
+      "Feedback": r.feedback,
+      "Submitted By": r.submittedBy,
+      "Email": r.submittedByEmail,
+      "Submitted At": r.submittedAt,
     }));
     const ws = utils.json_to_sheet(data);
     ws["!cols"] = Object.keys(data[0]).map((k) => ({ wch: Math.max(k.length, ...data.map((r) => String(r[k as keyof typeof r] ?? "").length)) + 2 }));
@@ -113,11 +135,30 @@ export default function MasterAdminSubmissions() {
     writeFile(wb, `All_Submissions_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/submissions/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setAllRows((prev) => prev.filter((r) => r.id !== id));
+        setFilteredRows((prev) => prev.filter((r) => r.id !== id));
+        toast("Submission deleted successfully", "success");
+      } else {
+        toast("Failed to delete submission", "error");
+      }
+    } catch {
+      toast("Network error — please try again", "error");
+    } finally {
+      setDeletingId(null);
+      setConfirmId(null);
+    }
+  }
+
   const strOps = getGridStringOperators().filter((op) => ["contains", "equals", "startsWith", "endsWith"].includes(op.value));
 
   const columns: GridColDef[] = [
     { field: "date", headerName: "Date", width: 110, filterOperators: strOps },
-    { field: "salesPerson", headerName: "Sales Person", width: 160, filterOperators: strOps },
+    { field: "salesPerson", headerName: "Arihant Representative", width: 160, filterOperators: strOps },
     { field: "clientName", headerName: "Client", width: 200, filterOperators: strOps },
     { field: "designation", headerName: "Designation", width: 140, filterOperators: strOps },
     { field: "modeOfCommunication", headerName: "Mode", width: 130, type: "singleSelect", valueOptions: ["Phone", "Online Meet", "Physical"], filterOperators: getGridSingleSelectOperators() },
@@ -128,7 +169,10 @@ export default function MasterAdminSubmissions() {
       field: "recommendation", headerName: "Rec.", width: 100, type: "singleSelect", valueOptions: ["Buy", "Sell", "Hold"], filterOperators: getGridSingleSelectOperators(),
       renderCell: (p: GridRenderCellParams) => <Chip label={p.value as string} color={REC_COLOR[p.value as string] ?? "default"} size="small" sx={{ fontWeight: 600, fontSize: 12 }} />,
     },
-    { field: "analystName", headerName: "Analyst", width: 150, filterOperators: strOps },
+    { field: "analystName", headerName: "Buy Side Analyst", width: 160, filterOperators: strOps },
+    { field: "buySideAnalystDesignation", headerName: "Buy Side Analyst Designation", width: 200, filterOperators: strOps },
+    { field: "rationale", headerName: "Rationale", width: 200, filterOperators: strOps },
+    { field: "feedback", headerName: "Feedback", width: 200, filterOperators: strOps },
     {
       field: "submittedBy", headerName: "Submitted By", width: 150, filterOperators: strOps,
       renderCell: (p: GridRenderCellParams) => (
@@ -136,9 +180,41 @@ export default function MasterAdminSubmissions() {
       ),
     },
     { field: "submittedAt", headerName: "Submitted At", width: 170, filterOperators: strOps },
+    {
+      field: "actions", headerName: "", width: 80, sortable: false, filterable: false, disableColumnMenu: true,
+      renderCell: (p: GridRenderCellParams) => (
+        <button
+          onClick={() => setConfirmId(p.row.id as string)}
+          disabled={deletingId === p.row.id}
+          className="flex items-center justify-center w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-40"
+          title="Delete submission"
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        </button>
+      ),
+    },
   ];
 
   return (
+    <>
+    {confirmId && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+          <h3 className="text-base font-semibold text-gray-900 mb-2">Delete submission?</h3>
+          <p className="text-sm text-gray-500 mb-5">This action cannot be undone.</p>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setConfirmId(null)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">Cancel</button>
+            <button
+              onClick={() => handleDelete(confirmId)}
+              disabled={deletingId === confirmId}
+              className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 rounded-lg transition-colors"
+            >
+              {deletingId === confirmId ? "Deleting…" : "Delete"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
       {/* Header */}
       <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100">
@@ -208,9 +284,17 @@ export default function MasterAdminSubmissions() {
                       <p className="text-xs text-gray-500 truncate">{r.clientName} · {r.salesPerson}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{r.date}</p>
                     </div>
-                    <svg className={`w-4 h-4 text-gray-400 shrink-0 mt-1 transition-transform ${expandedCard === r.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <div className="flex items-center gap-1 shrink-0 mt-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setConfirmId(r.id); }}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      >
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                      <svg className={`w-4 h-4 text-gray-400 transition-transform ${expandedCard === r.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
                 {expandedCard === r.id && (
@@ -220,7 +304,10 @@ export default function MasterAdminSubmissions() {
                       ["Mode", r.modeOfCommunication],
                       ["Sector", r.sector],
                       ["CMP & Target", r.cmpTarget],
-                      ["Analyst", r.analystName],
+                      ["Buy Side Analyst", r.analystName],
+                      ["BS Analyst Designation", r.buySideAnalystDesignation],
+                      ["Rationale", r.rationale],
+                      ["Feedback", r.feedback],
                       ["Submitted By", r.submittedBy],
                       ["Submitted At", r.submittedAt],
                     ].map(([label, val]) => (
@@ -237,5 +324,6 @@ export default function MasterAdminSubmissions() {
         )}
       </div>
     </div>
+    </>
   );
 }

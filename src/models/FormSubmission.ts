@@ -12,6 +12,9 @@ export interface IFormSubmission extends Document {
   cmpTarget: string;
   recommendation: "Buy" | "Sell" | "Hold";
   analystName: string;
+  buySideAnalystDesignation: string;
+  rationale: string;
+  feedback: string;
   submittedAt: Date;
 }
 
@@ -28,6 +31,9 @@ const FormSubmissionSchema = new Schema<IFormSubmission>(
     cmpTarget: { type: String, required: true },
     recommendation: { type: String, enum: ["Buy", "Sell", "Hold"], required: true },
     analystName: { type: String, required: true },
+    buySideAnalystDesignation: { type: String, default: "" },
+    rationale: { type: String, default: "" },
+    feedback: { type: String, default: "" },
     submittedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

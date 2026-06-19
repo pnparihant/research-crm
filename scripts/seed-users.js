@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-require("dotenv").config({ path: ".env.local" });
+require("dotenv").config({ path: require("path").resolve(__dirname, "../.env.local") });
 
 const users = [
   { name: "Abhishek Jain",      email: "abhishek.jain@arihantcapital.com" },

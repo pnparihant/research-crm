@@ -15,6 +15,8 @@ export interface IUser extends Document {
   twoFactorSecret: string | null;
   twoFactorEnabled: boolean;
   assignedClients: IAssignedClient[];
+  resetToken?: string | null;
+  resetTokenExpiry?: Date | null;
   createdAt: Date;
 }
 
@@ -37,6 +39,8 @@ const UserSchema = new Schema<IUser>(
     twoFactorSecret: { type: String, default: null },
     twoFactorEnabled: { type: Boolean, default: false },
     assignedClients: { type: [AssignedClientSchema], default: [] },
+    resetToken: { type: String, default: null },
+    resetTokenExpiry: { type: Date, default: null },
   },
   { timestamps: true }
 );

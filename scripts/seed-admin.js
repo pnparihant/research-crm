@@ -1,7 +1,7 @@
 // Run: node scripts/seed-admin.js
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-require("dotenv").config({ path: ".env.local" });
+require("dotenv").config({ path: require("path").resolve(__dirname, "../.env.local") });
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const EMAIL    = process.env.ADMIN_EMAIL    || "admin@cms.com";

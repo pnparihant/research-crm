@@ -2,7 +2,7 @@
  * Seeds client company names into MongoDB (CompanyGroup + Company collections)
  * Run: node scripts/seed-companies.js
  */
-require("dotenv").config({ path: ".env.local" });
+require("dotenv").config({ path: require("path").resolve(__dirname, "../.env.local") });
 const mongoose = require("mongoose");
 
 const CompanyGroupSchema = new mongoose.Schema({ name: { type: String, required: true, unique: true } });
