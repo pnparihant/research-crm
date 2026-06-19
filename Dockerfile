@@ -15,7 +15,7 @@ WORKDIR /app
 # At runtime they are supplied via docker run --env-file or docker-compose.
 ARG NODE_ENV=production
 ARG NEXTAUTH_SECRET
-ARG NEXTAUTH_URL
+ARG NEXTAUTH_URL=http://localhost:3000
 ARG MONGODB_URI
 ARG MSSQL_HOST
 ARG MSSQL_PORT=1433
