@@ -101,8 +101,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
 
     toast("Form submitted successfully", "success");
     setForm({ ...EMPTY_FORM, salesPerson: userName });
-    setStockQuery("");
-    setStockSelected(false);
+    setStockQuery(""); setStockSelected(false);
     setTimeout(() => onSubmitted(), 1000);
   }
 

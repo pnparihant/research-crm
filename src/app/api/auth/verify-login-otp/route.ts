@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
+import { logAction, getClientIp } from "@/lib/auditLog";
 
 export async function POST(req: NextRequest) {
   const { email, otp } = await req.json();
@@ -22,8 +23,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid OTP" }, { status: 400 });
   }
 
-  // Clear OTP after successful verification
   await User.updateOne({ _id: user._id }, { $unset: { loginOtp: "", loginOtpExpiry: "" } });
+
+  // Build a fake token-like object for logging since the session doesn't exist yet
+  const fakeToken = { id: user._id.toString(), name: user.name, email: user.email, role: user.role };
+  await logAction(req, fakeToken as never, "LOGIN", `Logged in via OTP`);
 
   return NextResponse.json({ success: true });
 }

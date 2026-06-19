@@ -3,6 +3,7 @@ import { getToken } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import mongoose from "mongoose";
+import { logAction } from "@/lib/auditLog";
 
 export async function GET(req: NextRequest) {
   const token = await getToken({ req });
@@ -80,6 +81,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "action must be add or remove" }, { status: 400 });
   }
 
+  await logAction(req, token, action === "add" ? "ASSIGN_CLIENT" : "REMOVE_CLIENT",
+    `User ID: ${id}, Client ID: ${clientId}`);
   return NextResponse.json({ success: true });
 }
 
@@ -109,6 +112,7 @@ export async function POST(req: NextRequest) {
     phone: phone || null,
   });
 
+  await logAction(req, token, "CREATE_USER", `Created user: ${name} (${email.toLowerCase()})`);
   return NextResponse.json(
     { _id: user._id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt },
     { status: 201 }
@@ -129,6 +133,7 @@ export async function DELETE(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
   if (user.role !== "user") return NextResponse.json({ error: "Can only delete regular users" }, { status: 400 });
 
+  await logAction(req, token, "DELETE_USER", `Deleted user: ${user.name} (${user.email})`);
   await User.findByIdAndDelete(id);
   return NextResponse.json({ success: true });
 }

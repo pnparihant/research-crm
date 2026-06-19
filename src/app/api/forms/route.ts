@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { FormSubmission } from "@/models/FormSubmission";
+import { logAction } from "@/lib/auditLog";
 
 export async function GET(req: NextRequest) {
   const token = await getToken({ req });
@@ -45,5 +46,6 @@ export async function POST(req: NextRequest) {
     submittedAt: new Date(),
   });
 
+  await logAction(req, token, "FORM_SUBMIT", `Client: ${clientName}, Company: ${company}`);
   return NextResponse.json(submission, { status: 201 });
 }

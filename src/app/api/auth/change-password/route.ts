@@ -3,6 +3,7 @@ import { getToken } from "next-auth/jwt";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
+import { logAction } from "@/lib/auditLog";
 
 export async function POST(req: NextRequest) {
   const token = await getToken({ req });
@@ -22,5 +23,6 @@ export async function POST(req: NextRequest) {
   user.password = await bcrypt.hash(newPassword, 12);
   await user.save();
 
+  await logAction(req, token, "CHANGE_PASSWORD");
   return NextResponse.json({ success: true });
 }

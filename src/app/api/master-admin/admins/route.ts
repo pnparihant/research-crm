@@ -3,6 +3,7 @@ import { getToken } from "next-auth/jwt";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
+import { logAction } from "@/lib/auditLog";
 
 export async function GET(req: NextRequest) {
   const token = await getToken({ req });
@@ -31,6 +32,11 @@ export async function PATCH(req: NextRequest) {
 
   user.role = action === "promote" ? "admin" : "user";
   await user.save();
+
+  await logAction(req, token,
+    action === "promote" ? "PROMOTE_TO_ADMIN" : "DEMOTE_TO_USER",
+    `Target: ${user.name} (${user.email})`
+  );
   return NextResponse.json({ _id: user._id, name: user.name, email: user.email, role: user.role });
 }
 
@@ -49,5 +55,7 @@ export async function POST(req: NextRequest) {
 
   const hashed = await bcrypt.hash(password, 12);
   const admin = await User.create({ name, email: email.toLowerCase(), password: hashed, role: "admin", phone: phone || null });
+
+  await logAction(req, token, "CREATE_ADMIN", `Created admin: ${name} (${email.toLowerCase()})`);
   return NextResponse.json({ _id: admin._id, name: admin.name, email: admin.email, role: admin.role }, { status: 201 });
 }
