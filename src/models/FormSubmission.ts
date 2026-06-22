@@ -39,6 +39,10 @@ const FormSubmissionSchema = new Schema<IFormSubmission>(
   { timestamps: true }
 );
 
+FormSubmissionSchema.index({ createdAt: -1 });
+FormSubmissionSchema.index({ userId: 1 });
+FormSubmissionSchema.index({ userId: 1, createdAt: -1 });
+
 export const FormSubmission =
   mongoose.models.FormSubmission ??
   mongoose.model<IFormSubmission>("FormSubmission", FormSubmissionSchema);

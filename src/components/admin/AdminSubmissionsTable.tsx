@@ -41,41 +41,63 @@ function Toolbar() {
   );
 }
 
+const PAGE_LIMIT = 500;
+
+function mapSubmissions(data: Record<string, unknown>[]): Row[] {
+  return data.map((s) => {
+    const user = s.userId as { name?: string; email?: string } | null;
+    return {
+      id: s._id as string,
+      date: s.date as string,
+      salesPerson: s.salesPerson as string,
+      clientName: s.clientName as string,
+      designation: (s.designation as string) ?? "",
+      modeOfCommunication: (s.modeOfCommunication as string) ?? "",
+      company: (s.company as string) ?? "",
+      sector: (s.sector as string) ?? "",
+      cmpTarget: (s.cmpTarget as string) ?? "",
+      recommendation: s.recommendation as "Buy" | "Sell" | "Hold",
+      analystName: (s.analystName as string) ?? "",
+      buySideAnalystDesignation: (s.buySideAnalystDesignation as string) ?? "",
+      rationale: (s.rationale as string) ?? "",
+      feedback: (s.feedback as string) ?? "",
+      submittedBy: user?.name ?? "—",
+      submittedByEmail: user?.email ?? "—",
+      submittedAt: new Date(s.submittedAt as string).toLocaleString("en-IN"),
+    };
+  });
+}
+
 export default function AdminSubmissionsTable() {
   const [allRows, setAllRows] = useState<Row[]>([]);
   const [filteredRows, setFilteredRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterModel, setFilterModel] = useState<GridFilterModel>({ items: [] });
   const [search, setSearch] = useState("");
+  const [serverSearch, setServerSearch] = useState("");
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [isLimited, setIsLimited] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/admin/submissions").then((r) => r.json()).then((data: Record<string, unknown>[]) => {
-      const mapped = data.map((s) => {
-        const user = s.userId as { name?: string; email?: string } | null;
-        return {
-          id: s._id as string,
-          date: s.date as string,
-          salesPerson: s.salesPerson as string,
-          clientName: s.clientName as string,
-          designation: (s.designation as string) ?? "",
-          modeOfCommunication: (s.modeOfCommunication as string) ?? "",
-          company: (s.company as string) ?? "",
-          sector: (s.sector as string) ?? "",
-          cmpTarget: (s.cmpTarget as string) ?? "",
-          recommendation: s.recommendation as "Buy" | "Sell" | "Hold",
-          analystName: (s.analystName as string) ?? "",
-          buySideAnalystDesignation: (s.buySideAnalystDesignation as string) ?? "",
-          rationale: (s.rationale as string) ?? "",
-          feedback: (s.feedback as string) ?? "",
-          submittedBy: user?.name ?? "—",
-          submittedByEmail: user?.email ?? "—",
-          submittedAt: new Date(s.submittedAt as string).toLocaleString("en-IN"),
-        };
-      });
+  function loadData(searchQuery = "", loadAll = false) {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (loadAll) params.set("all", "true");
+    else if (searchQuery) params.set("search", searchQuery);
+    const qs = params.toString();
+    const url = `/api/admin/submissions${qs ? "?" + qs : ""}`;
+    fetch(url).then((r) => r.json()).then((data: Record<string, unknown>[]) => {
+      const mapped = mapSubmissions(data);
       setAllRows(mapped); setFilteredRows(mapped); setLoading(false);
+      setIsLimited(!loadAll && !searchQuery && data.length === PAGE_LIMIT);
     }).catch(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => { loadData(); }, []);
+
+  function handleServerSearch(e: React.FormEvent) {
+    e.preventDefault();
+    loadData(serverSearch);
+  }
 
   const handleFilterModelChange = useCallback((model: GridFilterModel) => {
     setFilterModel(model);
@@ -168,7 +190,18 @@ export default function AdminSubmissionsTable() {
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900">All Submissions</h2>
             <p className="text-sm text-gray-500 mt-0.5">View and filter all client interaction records</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <form onSubmit={handleServerSearch} className="flex items-center gap-2 hidden sm:flex">
+              <input
+                type="text"
+                value={serverSearch}
+                onChange={(e) => setServerSearch(e.target.value)}
+                placeholder="Search across all records…"
+                className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 w-48"
+              />
+              <button type="submit" className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium transition-colors">Search</button>
+              {serverSearch && <button type="button" onClick={() => { setServerSearch(""); loadData(); }} className="text-xs text-gray-400 hover:text-gray-600">Clear</button>}
+            </form>
             <span className="text-sm text-gray-500 hidden sm:inline">{filteredRows.length} / {allRows.length} rows</span>
             <button
               onClick={exportExcel}
@@ -181,6 +214,14 @@ export default function AdminSubmissionsTable() {
           </div>
         </div>
       </div>
+
+      {/* Limited data banner */}
+      {isLimited && (
+        <div className="px-4 sm:px-6 py-2 bg-amber-50 border-b border-amber-100 flex items-center justify-between gap-2 text-xs text-amber-700">
+          <span>Showing latest {PAGE_LIMIT} records. Use the search above to find older entries.</span>
+          <button onClick={() => { setServerSearch(""); loadData("", true); }} className="font-semibold underline hover:no-underline">Load all</button>
+        </div>
+      )}
 
       {/* Desktop DataGrid */}
       <div className="hidden md:block">

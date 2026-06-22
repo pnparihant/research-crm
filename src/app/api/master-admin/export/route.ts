@@ -4,8 +4,16 @@ import { connectDB } from "@/lib/mongodb";
 import { FormSubmission } from "@/models/FormSubmission";
 import ExcelJS from "exceljs";
 
+let activeExports = 0;
+const MAX_CONCURRENT_EXPORTS = 2;
+
 export async function POST(req: NextRequest) {
   console.log("[master-admin/export] POST — Excel export with password");
+
+  if (activeExports >= MAX_CONCURRENT_EXPORTS) {
+    console.warn("[master-admin/export] Too many concurrent exports, rejecting");
+    return NextResponse.json({ error: "An export is already in progress. Please wait and try again." }, { status: 429 });
+  }
   const token = await getToken({ req });
   if (!token) {
     console.log("[master-admin/export] FAIL — unauthorized");
@@ -22,6 +30,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Password is required" }, { status: 400 });
   }
 
+  activeExports++;
+  try {
   await connectDB();
   const submissions = await FormSubmission.find()
     .populate<{ userId: { name: string; email: string } }>("userId", "name email")
@@ -135,4 +145,7 @@ export async function POST(req: NextRequest) {
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
+  } finally {
+    activeExports--;
+  }
 }

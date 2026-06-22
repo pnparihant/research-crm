@@ -22,7 +22,7 @@ export async function connectDB(): Promise<typeof mongoose> {
 
   if (!cached.promise) {
     console.log("[mongodb] Connecting to MongoDB...");
-    cached.promise = mongoose.connect(MONGODB_URI, { bufferCommands: false });
+    cached.promise = mongoose.connect(MONGODB_URI, { bufferCommands: false, maxPoolSize: 20 });
   }
 
   cached.conn = await cached.promise;
