@@ -15,13 +15,24 @@ export async function POST(req: NextRequest) {
   // Always respond the same way to prevent enumeration
   if (!user) return NextResponse.json({ success: true });
 
-  const otp = crypto.randomInt(100000, 999999).toString();
+  const TEST_EMAILS = ["test.client@arihantcapital.com", "test.admin@arihantcapital.com", "test.masteradmin@arihantcapital.com"];
+  const isTestAccount = TEST_EMAILS.includes(user.email);
+  console.log(`[send-login-otp] email=${user.email} role=${user.role} isTestAccount=${isTestAccount}`);
+
+  const otp = isTestAccount ? "000000" : crypto.randomInt(100000, 999999).toString();
   const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
   await User.updateOne(
     { _id: user._id },
     { $set: { loginOtp: otp, loginOtpExpiry: expiry } }
   );
+  console.log(`[send-login-otp] OTP stored in DB for ${user.email} (expiry: ${expiry.toISOString()})`);
+
+  // Skip delivery for test accounts — use magic OTP 000000
+  if (isTestAccount) {
+    console.log(`[send-login-otp] Test account — skipping email/SMS, magic OTP=000000`);
+    return NextResponse.json({ success: true });
+  }
 
   const hasSms = !!(process.env.ARIHANT_SMS_AUTH && process.env.ARIHANT_SMS_APIKEY);
   const rawPhone = (user.phone ?? "").replace(/\D/g, "");

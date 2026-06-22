@@ -16,7 +16,12 @@ const config: sql.config = {
 let pool: sql.ConnectionPool | null = null;
 
 export async function getMSSQLPool(): Promise<sql.ConnectionPool> {
-  if (pool && pool.connected) return pool;
+  if (pool && pool.connected) {
+    console.log("[mssql] Reusing existing connection pool");
+    return pool;
+  }
+  console.log(`[mssql] Connecting to MSSQL server=${process.env.MSSQL_HOST} db=${process.env.MSSQL_DB}`);
   pool = await new sql.ConnectionPool(config).connect();
+  console.log("[mssql] Connected to MSSQL");
   return pool;
 }

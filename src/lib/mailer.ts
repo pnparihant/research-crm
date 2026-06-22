@@ -13,6 +13,7 @@ export function createTransporter() {
 }
 
 export async function sendLoginOtpEmail(to: string, otp: string) {
+  console.log(`[mailer] sendLoginOtpEmail — to=${to}`);
   const transporter = createTransporter();
   await transporter.sendMail({
     from: `"${process.env.SMTP_FROM_NAME ?? "Arihant Capital Markets"}" <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
@@ -35,9 +36,11 @@ export async function sendLoginOtpEmail(to: string, otp: string) {
       </div>
     `,
   });
+  console.log(`[mailer] sendLoginOtpEmail — sent successfully to ${to}`);
 }
 
 export async function sendPasswordResetEmail(to: string, name: string, resetUrl: string) {
+  console.log(`[mailer] sendPasswordResetEmail — to=${to}`);
   const transporter = createTransporter();
   await transporter.sendMail({
     from: `"${process.env.SMTP_FROM_NAME ?? "Arihant Capital Markets"}" <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
@@ -51,4 +54,5 @@ export async function sendPasswordResetEmail(to: string, name: string, resetUrl:
       <p style="color:#9ca3af;font-size:12px;">Arihant Capital Markets — CRM</p>
     `,
   });
+  console.log(`[mailer] sendPasswordResetEmail — sent successfully to ${to}`);
 }

@@ -5,8 +5,12 @@ import { User } from "@/models/User";
 import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
+  console.log("[users/my-clients] GET — fetching assigned clients");
   const token = await getToken({ req });
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) {
+    console.log("[users/my-clients] GET FAIL — unauthorized");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   await connectDB();
 
@@ -15,7 +19,10 @@ export async function GET(req: NextRequest) {
     { _id: new mongoose.Types.ObjectId(token.id as string) },
     { projection: { assignedClients: 1 } }
   );
-  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  if (!user) {
+    console.log(`[users/my-clients] GET FAIL — user not found, id=${token.id}`);
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
 
   const entries = user.assignedClients ?? [];
 
@@ -27,13 +34,17 @@ export async function GET(req: NextRequest) {
     return ac as mongoose.Types.ObjectId;
   }).filter(Boolean);
 
-  if (!clientIds.length) return NextResponse.json([]);
+  if (!clientIds.length) {
+    console.log(`[users/my-clients] GET — no assigned clients for user=${token.email}`);
+    return NextResponse.json([]);
+  }
 
-  const Company = mongoose.connection.collection("companies");
-  const companies = await Company.find(
+  const ClientCol = mongoose.connection.collection("clients");
+  const clientDocs = await ClientCol.find(
     { _id: { $in: clientIds } },
-    { projection: { name: 1 } }
+    { projection: { name: 1, code: 1 } }
   ).toArray();
 
-  return NextResponse.json(companies.map((c) => ({ _id: c._id.toString(), name: c.name })));
+  console.log(`[users/my-clients] GET — returned ${clientDocs.length} clients for user=${token.email}`);
+  return NextResponse.json(clientDocs.map((c) => ({ _id: c._id.toString(), code: c.code, name: c.name })));
 }

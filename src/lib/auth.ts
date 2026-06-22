@@ -13,15 +13,26 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        console.log(`[auth] authorize — email=${credentials?.email}`);
+        if (!credentials?.email || !credentials?.password) {
+          console.log("[auth] authorize FAIL — missing credentials");
+          return null;
+        }
 
         await connectDB();
         const user = await User.findOne({ email: credentials.email.toLowerCase() });
-        if (!user) return null;
+        if (!user) {
+          console.log(`[auth] authorize FAIL — user not found, email=${credentials.email}`);
+          return null;
+        }
 
         const isValid = await bcrypt.compare(credentials.password, user.password);
-        if (!isValid) return null;
+        if (!isValid) {
+          console.log(`[auth] authorize FAIL — wrong password, email=${credentials.email}`);
+          return null;
+        }
 
+        console.log(`[auth] authorize OK — email=${user.email} role=${user.role} 2fa=${user.twoFactorEnabled}`);
         return {
           id: user._id.toString(),
           email: user.email,
@@ -36,12 +47,14 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
+        console.log(`[auth] jwt callback — new session for email=${user.email} role=${(user as { role?: string }).role}`);
         token.id = user.id;
         token.role = (user as { role?: string }).role ?? "user";
         token.twoFactorEnabled = (user as { twoFactorEnabled?: boolean }).twoFactorEnabled ?? false;
         token.twoFactorVerified = false;
       }
       if (trigger === "update" && session?.twoFactorVerified) {
+        console.log(`[auth] jwt callback — 2FA verified update for token id=${token.id}`);
         token.twoFactorVerified = true;
       }
       return token;

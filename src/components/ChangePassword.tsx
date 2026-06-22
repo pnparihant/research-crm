@@ -47,7 +47,7 @@ export default function ChangePassword({ accentColor = "teal" }: { accentColor?:
 
   const inputCls = `w-full px-3.5 py-2.5 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${ring} focus:border-transparent`;
 
-  function PasswordField({ field, label, showKey }: { field: keyof typeof form; label: string; showKey: keyof typeof show }) {
+  function PasswordField({ field, label, showKey, autoComplete }: { field: keyof typeof form; label: string; showKey: keyof typeof show; autoComplete: string }) {
     return (
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-gray-700">{label}</label>
@@ -57,6 +57,7 @@ export default function ChangePassword({ accentColor = "teal" }: { accentColor?:
             value={form[field]}
             onChange={(e) => setForm((p) => ({ ...p, [field]: e.target.value }))}
             required
+            autoComplete={autoComplete}
             className={inputCls}
             placeholder="••••••••"
           />
@@ -77,10 +78,13 @@ export default function ChangePassword({ accentColor = "teal" }: { accentColor?:
       </div>
 
       <div className="px-6 py-5">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <PasswordField field="currentPassword" label="Current Password" showKey="current" />
-          <PasswordField field="newPassword" label="New Password" showKey="new" />
-          <PasswordField field="confirmPassword" label="Confirm New Password" showKey="confirm" />
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
+          {/* Hidden dummy fields stop browsers from autofilling saved credentials into the password fields */}
+          <input type="text" name="username" autoComplete="username" aria-hidden="true" className="hidden" tabIndex={-1} readOnly />
+          <input type="password" name="prevent-autofill" autoComplete="new-password" aria-hidden="true" className="hidden" tabIndex={-1} readOnly />
+          <PasswordField field="currentPassword" label="Current Password" showKey="current" autoComplete="current-password" />
+          <PasswordField field="newPassword" label="New Password" showKey="new" autoComplete="new-password" />
+          <PasswordField field="confirmPassword" label="Confirm New Password" showKey="confirm" autoComplete="new-password" />
           <div className="pt-1">
             <button type="submit" disabled={loading}
               className={`${btn} text-white font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors`}>

@@ -17,6 +17,7 @@ export async function logAction(
   action: string,
   details?: string
 ) {
+  console.log(`[auditLog] action=${action} user=${token?.email ?? "unknown"} ip=${getClientIp(req)}${details ? ` details="${details}"` : ""}`);
   try {
     await connectDB();
     await ActionLog.create({
@@ -30,6 +31,6 @@ export async function logAction(
       userAgent: req.headers.get("user-agent") ?? null,
     });
   } catch (err) {
-    console.error("[AuditLog] Failed to write log:", err);
+    console.error("[auditLog] Failed to write log:", err);
   }
 }

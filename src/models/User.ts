@@ -25,7 +25,7 @@ export interface IUser extends Document {
 
 const AssignedClientSchema = new Schema<IAssignedClient>(
   {
-    client: { type: Schema.Types.ObjectId, ref: "Company", required: true },
+    client: { type: Schema.Types.ObjectId, ref: "Client", required: true },
     assignedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
     assignedByName: { type: String, required: true },
     assignedAt: { type: Date, default: () => new Date() },

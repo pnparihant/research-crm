@@ -23,3 +23,11 @@ export const Company = mongoose.models.Company ?? mongoose.model<ICompany>("Comp
 export interface ISalesExecutive extends Document { name: string }
 const SalesExecutiveSchema = new Schema<ISalesExecutive>({ name: { type: String, required: true, unique: true, trim: true } }, { timestamps: true });
 export const SalesExecutive = mongoose.models.SalesExecutive ?? mongoose.model<ISalesExecutive>("SalesExecutive", SalesExecutiveSchema);
+
+// ── Client (Arihant's institutional clients / counterparties) ─────────────────
+export interface IClient extends Document { code: string; name: string }
+const ClientSchema = new Schema<IClient>({
+  code: { type: String, required: true, unique: true, trim: true },
+  name: { type: String, required: true, trim: true },
+}, { timestamps: true });
+export const Client = mongoose.models.Client ?? mongoose.model<IClient>("Client", ClientSchema);

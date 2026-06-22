@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/Toast";
 
-interface ClientItem { _id: string; name: string }
+interface ClientItem { _id: string; code: string; name: string }
 
 interface AssignedEntry {
   client: ClientItem;
@@ -14,10 +15,12 @@ interface UserItem {
   _id: string;
   name: string;
   email: string;
+  role: string;
   assignedClients: AssignedEntry[];
 }
 
 export default function AssignClients() {
+  const { data: session } = useSession();
   const { toast } = useToast();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [allClients, setAllClients] = useState<ClientItem[]>([]);
@@ -29,9 +32,20 @@ export default function AssignClients() {
   useEffect(() => {
     Promise.all([
       fetch("/api/admin/users").then((r) => r.json()),
-      fetch("/api/master/companies").then((r) => r.json()),
+      fetch("/api/master/clients").then((r) => r.json()),
     ]).then(([u, c]) => {
-      setUsers(Array.isArray(u) ? u.map((user) => ({ ...user, assignedClients: user.assignedClients ?? [] })) : []);
+      if (Array.isArray(u)) {
+        // Sort: self first, then others alphabetically
+        const mapped = u.map((user) => ({ ...user, assignedClients: user.assignedClients ?? [] }));
+        mapped.sort((a, b) => {
+          if (a.email === session?.user?.email) return -1;
+          if (b.email === session?.user?.email) return 1;
+          return a.name.localeCompare(b.name);
+        });
+        setUsers(mapped);
+      } else {
+        setUsers([]);
+      }
       setAllClients(Array.isArray(c) ? c : []);
       setLoading(false);
     });
@@ -69,7 +83,9 @@ export default function AssignClients() {
   }
 
   const filteredClients = allClients.filter((c) =>
-    !search || c.name.toLowerCase().includes(search.toLowerCase())
+    !search ||
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.code.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) return (
@@ -98,7 +114,15 @@ export default function AssignClients() {
               onClick={() => setOpenUser(openUser === user._id ? null : user._id)}
             >
               <div>
-                <p className="font-medium text-gray-900">{user.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-900">{user.name}</p>
+                  {user.email === session?.user?.email && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 uppercase tracking-wide">You</span>
+                  )}
+                  {user.role === "admin" || user.role === "master_admin" ? (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 uppercase tracking-wide">{user.role === "master_admin" ? "Master Admin" : "Admin"}</span>
+                  ) : null}
+                </div>
                 <p className="text-xs text-gray-400">{user.email}</p>
               </div>
               <div className="flex items-center gap-3">
@@ -146,6 +170,7 @@ export default function AssignClients() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm text-gray-700 leading-tight">{client.name}</p>
+                          <p className="text-[10px] text-gray-400 font-mono mt-0.5">{client.code}</p>
                           {assigned && assignment && (
                             <p className="text-[10px] text-indigo-500 mt-0.5 truncate">
                               by {assignment.assignedByName} · {new Date(assignment.assignedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}

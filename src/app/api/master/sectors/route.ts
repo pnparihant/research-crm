@@ -4,31 +4,58 @@ import { connectDB } from "@/lib/mongodb";
 import { Sector } from "@/models/MasterData";
 
 export async function GET(req: NextRequest) {
+  console.log("[sectors] GET — fetching all sectors");
   const token = await getToken({ req });
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) {
+    console.log("[sectors] GET FAIL — unauthorized");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   await connectDB();
   const sectors = await Sector.find().sort({ name: 1 }).lean();
+  console.log(`[sectors] GET — returned ${sectors.length} sectors`);
   return NextResponse.json(sectors);
 }
 
 export async function POST(req: NextRequest) {
+  console.log("[sectors] POST — create sector");
   const token = await getToken({ req });
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (token.role !== "admin" && token.role !== "master_admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!token) {
+    console.log("[sectors] POST FAIL — unauthorized");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (token.role !== "admin" && token.role !== "master_admin") {
+    console.log(`[sectors] POST FAIL — forbidden, role=${token.role}`);
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const { name } = await req.json();
-  if (!name?.trim()) return NextResponse.json({ error: "Name required" }, { status: 400 });
+  if (!name?.trim()) {
+    console.log("[sectors] POST FAIL — name missing");
+    return NextResponse.json({ error: "Name required" }, { status: 400 });
+  }
   await connectDB();
   const doc = await Sector.create({ name: name.trim() });
+  console.log(`[sectors] POST — created sector name="${name.trim()}" by user=${token.email}`);
   return NextResponse.json(doc, { status: 201 });
 }
 
 export async function DELETE(req: NextRequest) {
-  const token = await getToken({ req });
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (token.role !== "admin" && token.role !== "master_admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const id = new URL(req.url).searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+  console.log(`[sectors] DELETE — id=${id}`);
+  const token = await getToken({ req });
+  if (!token) {
+    console.log("[sectors] DELETE FAIL — unauthorized");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (token.role !== "admin" && token.role !== "master_admin") {
+    console.log(`[sectors] DELETE FAIL — forbidden, role=${token.role}`);
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (!id) {
+    console.log("[sectors] DELETE FAIL — id missing");
+    return NextResponse.json({ error: "ID required" }, { status: 400 });
+  }
   await connectDB();
   await Sector.findByIdAndDelete(id);
+  console.log(`[sectors] DELETE — deleted sector id=${id} by user=${token.email}`);
   return NextResponse.json({ success: true });
 }

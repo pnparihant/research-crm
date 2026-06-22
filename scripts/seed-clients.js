@@ -1,6 +1,7 @@
+// Seed Arihant institutional clients into the dedicated 'clients' collection.
 // Run: node scripts/seed-clients.js
-require("dotenv").config({ path: ".env.local" });
 const mongoose = require("mongoose");
+require("dotenv").config({ path: require("path").resolve(__dirname, "../.env.local") });
 
 const CLIENTS = [
   { code: "I2254", name: "ADITYA BIRLA PENSION -E - TIER I" },
@@ -179,22 +180,36 @@ const CLIENTS = [
   { code: "I1542", name: "IDFC LIMITED" },
 ];
 
+const ClientSchema = new mongoose.Schema(
+  {
+    code: { type: String, required: true, unique: true, trim: true },
+    name: { type: String, required: true, trim: true },
+  },
+  { timestamps: true }
+);
+
 async function main() {
+  if (!process.env.MONGODB_URI) { console.error("MONGODB_URI not set in .env.local"); process.exit(1); }
   await mongoose.connect(process.env.MONGODB_URI);
-  console.log("Connected to MongoDB:", process.env.MONGODB_URI);
+  console.log("Connected to MongoDB\n");
 
-  const col = mongoose.connection.collection("companies");
+  const Client = mongoose.models.Client || mongoose.model("Client", ClientSchema);
 
-  let inserted = 0, skipped = 0;
-  for (const client of CLIENTS) {
-    const exists = await col.findOne({ code: client.code });
-    if (exists) { skipped++; continue; }
-    await col.insertOne({ code: client.code, name: client.name, createdAt: new Date() });
-    inserted++;
+  let created = 0, updated = 0;
+  for (const c of CLIENTS) {
+    const existing = await Client.findOne({ code: c.code });
+    if (existing) {
+      await Client.updateOne({ code: c.code }, { $set: { name: c.name } });
+      updated++;
+    } else {
+      await Client.create(c);
+      created++;
+    }
   }
 
-  console.log(`Done. Inserted: ${inserted}, Skipped (already exist): ${skipped}`);
+  console.log(`✓ Created: ${created}   Updated: ${updated}   Total: ${CLIENTS.length}`);
   await mongoose.disconnect();
+  console.log("Done.");
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((err) => { console.error(err); process.exit(1); });

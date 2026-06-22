@@ -1,4 +1,5 @@
 export async function sendLoginOtpSms(phone: string, otp: string, userName: string) {
+  console.log(`[sms] sendLoginOtpSms — to=${phone} user="${userName}"`);
   const res = await fetch("https://arihantapicore.arihantcapital.com/V1/api/Media/sendSMS", {
     method: "POST",
     headers: {
@@ -22,8 +23,11 @@ export async function sendLoginOtpSms(phone: string, otp: string, userName: stri
 
   if (!res.ok) {
     const body = await res.text();
+    console.error(`[sms] sendLoginOtpSms FAIL — status=${res.status} body=${body}`);
     throw new Error(`SMS API error ${res.status}: ${body}`);
   }
 
-  return res.json();
+  const result = await res.json();
+  console.log(`[sms] sendLoginOtpSms — sent successfully to ${phone}`);
+  return result;
 }

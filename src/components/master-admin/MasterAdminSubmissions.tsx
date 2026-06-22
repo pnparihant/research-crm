@@ -7,7 +7,6 @@ import {
 } from "@mui/x-data-grid";
 import { Chip, Tooltip, Box } from "@mui/material";
 import { useToast } from "@/components/ui/Toast";
-import { utils, writeFile } from "xlsx";
 
 interface Row {
   id: string;
@@ -51,6 +50,10 @@ export default function MasterAdminSubmissions() {
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [exportModal, setExportModal] = useState(false);
+  const [exportPassword, setExportPassword] = useState("");
+  const [exportShowPwd, setExportShowPwd] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -107,32 +110,36 @@ export default function MasterAdminSubmissions() {
       r.salesPerson.toLowerCase().includes(q) || r.submittedBy.toLowerCase().includes(q);
   });
 
-  function exportExcel() {
-    if (!filteredRows.length) return;
-    const data = filteredRows.map((r, i) => ({
-      "Sr.No": i + 1,
-      "Date": r.date,
-      "Arihant Representative": r.salesPerson,
-      "Designation": r.designation,
-      "Client Name": r.clientName,
-      "Buy Side Analyst": r.analystName,
-      "Buy Side Analyst Designation": r.buySideAnalystDesignation,
-      "Mode of Communication": r.modeOfCommunication,
-      "Company": r.company,
-      "Sector": r.sector,
-      "CMP & Target": r.cmpTarget,
-      "Buy / Sell / Hold": r.recommendation,
-      "Rationale": r.rationale,
-      "Feedback": r.feedback,
-      "Submitted By": r.submittedBy,
-      "Email": r.submittedByEmail,
-      "Submitted At": r.submittedAt,
-    }));
-    const ws = utils.json_to_sheet(data);
-    ws["!cols"] = Object.keys(data[0]).map((k) => ({ wch: Math.max(k.length, ...data.map((r) => String(r[k as keyof typeof r] ?? "").length)) + 2 }));
-    const wb = utils.book_new();
-    utils.book_append_sheet(wb, ws, "All Submissions");
-    writeFile(wb, `All_Submissions_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  async function handleExport(e: React.FormEvent) {
+    e.preventDefault();
+    if (!exportPassword.trim()) return;
+    setExporting(true);
+    try {
+      const res = await fetch("/api/master-admin/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: exportPassword.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast((err as { error?: string }).error ?? "Export failed", "error");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `All_Submissions_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setExportModal(false);
+      setExportPassword("");
+      toast("Excel exported successfully", "success");
+    } catch {
+      toast("Export failed — please try again", "error");
+    } finally {
+      setExporting(false);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -197,6 +204,79 @@ export default function MasterAdminSubmissions() {
 
   return (
     <>
+    {/* Export password modal */}
+    {exportModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Set Export Password</h3>
+              <p className="text-xs text-gray-500 mt-0.5">The downloaded Excel file will require this password to open.</p>
+            </div>
+          </div>
+          <form onSubmit={handleExport} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+              <div className="relative">
+                <input
+                  type={exportShowPwd ? "text" : "password"}
+                  value={exportPassword}
+                  onChange={(e) => setExportPassword(e.target.value)}
+                  required
+                  autoFocus
+                  autoComplete="new-password"
+                  placeholder="Enter a password for the file"
+                  className="w-full px-3.5 py-2.5 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setExportShowPwd((v) => !v)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 p-3 text-gray-400 hover:text-gray-600"
+                >
+                  {exportShowPwd ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  )}
+                </button>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => { setExportModal(false); setExportPassword(""); }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={exporting || !exportPassword.trim()}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-purple-700 hover:bg-purple-800 disabled:bg-purple-300 disabled:cursor-not-allowed rounded-lg transition-colors"
+              >
+                {exporting ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                    Exporting…
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Download
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
     {confirmId && (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
         <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
@@ -226,7 +306,7 @@ export default function MasterAdminSubmissions() {
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500 hidden sm:inline">{filteredRows.length} / {allRows.length} rows</span>
             <button
-              onClick={exportExcel}
+              onClick={() => { setExportModal(true); setExportPassword(""); setExportShowPwd(false); }}
               disabled={allRows.length === 0}
               className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 disabled:bg-purple-300 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
             >
