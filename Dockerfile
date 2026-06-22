@@ -88,7 +88,7 @@ RUN echo "=== /app contents ===" && ls -la && \
     echo "=== .next contents ===" && ls -la .next
 
 # curl + wget for health checks / liveness probes
-RUN apk add --no-cache curl wget
+
 
 # Drop to non-root
 USER appuser
