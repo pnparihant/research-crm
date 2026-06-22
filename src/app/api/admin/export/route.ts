@@ -26,10 +26,9 @@ type SubmissionLean = {
 };
 
 export async function POST(req: NextRequest) {
-  console.log("[master-admin/export] POST — Excel export with password");
+  console.log("[admin/export] POST — Excel export with password");
 
   if (activeExports >= MAX_CONCURRENT_EXPORTS) {
-    console.warn("[master-admin/export] Too many concurrent exports, rejecting");
     return NextResponse.json(
       { error: "An export is already in progress. Please wait and try again." },
       { status: 429 }
@@ -38,18 +37,15 @@ export async function POST(req: NextRequest) {
 
   const token = await getToken({ req });
   if (!token) {
-    console.log("[master-admin/export] FAIL — unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (token.role !== "master_admin") {
-    console.log(`[master-admin/export] FAIL — forbidden, role=${token.role}`);
+  if (token.role !== "admin" && token.role !== "master_admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { password } = await req.json();
-  if (!password || password.trim().length < 1) {
-    console.log("[master-admin/export] FAIL — password missing");
-    return NextResponse.json({ error: "Password is required" }, { status: 400 });
+  const password = process.env.ADMIN_EXPORT_PASSWORD;
+  if (!password) {
+    return NextResponse.json({ error: "Export password not configured" }, { status: 500 });
   }
 
   activeExports++;
@@ -61,18 +57,18 @@ export async function POST(req: NextRequest) {
       .sort({ createdAt: -1 })
       .lean() as unknown as SubmissionLean[];
 
-    console.log(`[master-admin/export] Building workbook for ${submissions.length} submissions`);
+    console.log(`[admin/export] Building workbook for ${submissions.length} submissions`);
 
     const wb = new ExcelJS.Workbook();
     wb.creator = "Arihant Capital Markets";
     wb.created = new Date();
 
-    const ws = wb.addWorksheet("All Submissions");
+    const ws = wb.addWorksheet("Submissions");
 
     const HEADER_FILL: ExcelJS.Fill = {
       type: "pattern",
       pattern: "solid",
-      fgColor: { argb: "FF4B0082" },
+      fgColor: { argb: "FF3730A3" },
     };
     const HEADER_FONT: Partial<ExcelJS.Font> = {
       bold: true,
@@ -169,15 +165,12 @@ export async function POST(req: NextRequest) {
     }
 
     const { encrypt } = await import("officecrypto-tool");
-    const zipBuffer = zip.toBuffer();
-    console.log(`[master-admin/export] encrypting — password="${password.trim()}" zipSize=${zipBuffer.length}`);
-    const encrypted = await encrypt(zipBuffer, {
+    const encrypted = await encrypt(zip.toBuffer(), {
       password: password.trim(),
     });
-    console.log(`[master-admin/export] encrypted size=${encrypted.length} firstBytes=${Buffer.from(encrypted).slice(0, 4).toString("hex")}`);
 
-    const filename = `All_Submissions_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    console.log(`[master-admin/export] Done — ${submissions.length} rows, file=${filename}`);
+    const filename = `Submissions_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    console.log(`[admin/export] Done — ${submissions.length} rows, file=${filename}`);
 
     return new NextResponse(new Uint8Array(encrypted), {
       status: 200,

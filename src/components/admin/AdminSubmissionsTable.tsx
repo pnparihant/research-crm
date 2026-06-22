@@ -6,7 +6,6 @@ import {
   GridFilterModel, getGridStringOperators, getGridSingleSelectOperators,
 } from "@mui/x-data-grid";
 import { Chip, Tooltip, Box } from "@mui/material";
-import { utils, writeFile } from "xlsx";
 
 interface Row {
   id: string;
@@ -77,6 +76,7 @@ export default function AdminSubmissionsTable() {
   const [serverSearch, setServerSearch] = useState("");
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [isLimited, setIsLimited] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   function loadData(searchQuery = "", loadAll = false) {
     setLoading(true);
@@ -125,32 +125,21 @@ export default function AdminSubmissionsTable() {
       r.salesPerson.toLowerCase().includes(q) || r.submittedBy.toLowerCase().includes(q);
   });
 
-  function exportExcel() {
-    if (!filteredRows.length) return;
-    const data = filteredRows.map((r, i) => ({
-      "Sr.No": i + 1,
-      "Date": r.date,
-      "Arihant Representative": r.salesPerson,
-      "Designation": r.designation,
-      "Client Name": r.clientName,
-      "Buy Side Analyst": r.analystName,
-      "Buy Side Analyst Designation": r.buySideAnalystDesignation,
-      "Mode of Communication": r.modeOfCommunication,
-      "Company": r.company,
-      "Sector": r.sector,
-      "CMP & Target": r.cmpTarget,
-      "Buy / Sell / Hold": r.recommendation,
-      "Rationale": r.rationale,
-      "Feedback": r.feedback,
-      "Submitted By": r.submittedBy,
-      "Email": r.submittedByEmail,
-      "Submitted At": r.submittedAt,
-    }));
-    const ws = utils.json_to_sheet(data);
-    ws["!cols"] = Object.keys(data[0]).map((k) => ({ wch: Math.max(k.length, ...data.map((r) => String(r[k as keyof typeof r] ?? "").length)) + 2 }));
-    const wb = utils.book_new();
-    utils.book_append_sheet(wb, ws, "Submissions");
-    writeFile(wb, `Submissions_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/admin/export", { method: "POST" });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Submissions_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
   }
 
   const strOps = getGridStringOperators().filter((op) => ["contains", "equals", "startsWith", "endsWith"].includes(op.value));
@@ -204,7 +193,7 @@ export default function AdminSubmissionsTable() {
             </form>
             <span className="text-sm text-gray-500 hidden sm:inline">{filteredRows.length} / {allRows.length} rows</span>
             <button
-              onClick={exportExcel}
+              onClick={handleExport}
               disabled={allRows.length === 0}
               className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
             >

@@ -69,10 +69,13 @@ export default function AssignClients() {
 
     if (!res.ok) { toast("Failed to update assignment", "error"); return; }
 
-    const updated = await fetch("/api/admin/users").then((r) => r.json());
-    if (Array.isArray(updated)) {
-      setUsers(updated.map((u) => ({ ...u, assignedClients: u.assignedClients ?? [] })));
-    }
+    setUsers((prev) => prev.map((u) => {
+      if (u._id !== user._id) return u;
+      const updatedClients = action === "remove"
+        ? u.assignedClients.filter((ac) => ac.client?._id !== client._id)
+        : [...u.assignedClients, { client, assignedByName: session?.user?.name ?? "", assignedAt: new Date().toISOString() }];
+      return { ...u, assignedClients: updatedClients };
+    }));
 
     toast(
       action === "add"
