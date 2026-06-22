@@ -82,6 +82,15 @@ export async function PATCH(req: NextRequest) {
   const userId = new mongoose.Types.ObjectId(id);
   const cId = new mongoose.Types.ObjectId(clientId);
 
+  // Fetch user and client names for human-readable audit log
+  const ClientCol = mongoose.connection.collection("clients");
+  const [targetUser, clientDoc] = await Promise.all([
+    col.findOne({ _id: userId }, { projection: { name: 1, email: 1 } }),
+    ClientCol.findOne({ _id: cId }, { projection: { name: 1, code: 1 } }),
+  ]);
+  const targetLabel = targetUser ? `${targetUser.name} (${targetUser.email})` : id;
+  const clientLabel = clientDoc ? `${clientDoc.name}${clientDoc.code ? ` [${clientDoc.code}]` : ""}` : clientId;
+
   if (action === "add") {
     await col.updateOne(
       { _id: userId },
@@ -109,7 +118,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   await logAction(req, token, action === "add" ? "ASSIGN_CLIENT" : "REMOVE_CLIENT",
-    `User ID: ${id}, Client ID: ${clientId}`);
+    `${action === "add" ? "Assigned" : "Removed"} client ${clientLabel} ${action === "add" ? "to" : "from"} user ${targetLabel}`);
   return NextResponse.json({ success: true });
 }
 
