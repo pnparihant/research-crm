@@ -30,7 +30,7 @@ const DESIGNATIONS = [
   "Institutional Equity Sales Manager",
   "Equity Research Associate",
   "Sr Manager Sales",
-  "Buy Side Analyst",
+  "Buy Side Person",
   "Intern",
   "Head Institutional Equities",
   "Institutional Sales Trader",
@@ -50,8 +50,8 @@ const TEMPLATE_HEADERS = [
   "Arihant Representative",
   "Designation",
   "Client Name",
-  "Buy Side Analyst",
-  "Buy Side Analyst Designation",
+  "Buy Side Person",
+  "Buy Side Person Designation",
   "Mode of Communication",
   "Company",
   "Sector",
@@ -93,47 +93,26 @@ function validateRow(row: Omit<Row, "_errors">, _clients: ClientItem[], stocks: 
   return errs;
 }
 
-function downloadTemplate(clients: ClientItem[], userName: string) {
-  const wb = XLSX.utils.book_new();
+/** Returns today's date in DD-MM-YYYY format (IST). */
+function todayISTLabel(): string {
+  return new Date().toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).replace(/\//g, "-"); // e.g. "23-06-2026"
+}
 
-  const sampleRow = [
-    1,
-    "18/06/2026",
-    userName,
-    "Equity Research Analyst",
-    clients[0]?.name ?? "Client Name",
-    "John Analyst",
-    "Portfolio Manager",
-    "Phone",
-    "ACC",
-    "",           // Sector — auto-filled
-    "CMP 2400 / Target 2800",
-    "Buy",
-    "",
-    "",
-  ];
-
-  const ws = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS, sampleRow]);
-  ws["!cols"] = TEMPLATE_HEADERS.map((h) => ({ wch: Math.max(h.length, 22) }));
-  XLSX.utils.book_append_sheet(wb, ws, "Entries");
-
-  // Reference sheet
-  const refRows = [
-    ["Valid Designations", "Valid Modes", "Valid Recommendations"],
-    ...DESIGNATIONS.map((d, i) => [d, MODES[i] ?? "", RECS[i] ?? ""]),
-  ];
-  const wsRef = XLSX.utils.aoa_to_sheet(refRows);
-  wsRef["!cols"] = [{ wch: 50 }, { wch: 20 }, { wch: 25 }];
-  XLSX.utils.book_append_sheet(wb, wsRef, "Reference");
-
-  // Client list sheet
-  if (clients.length > 0) {
-    const wsClients = XLSX.utils.aoa_to_sheet([["Your Assigned Clients"], ...clients.map(c => [c.name])]);
-    wsClients["!cols"] = [{ wch: 40 }];
-    XLSX.utils.book_append_sheet(wb, wsClients, "My Clients");
-  }
-
-  XLSX.writeFile(wb, `CRM_Bulk_Template_${userName.replace(/\s+/g, "_")}.xlsx`);
+async function downloadTemplate() {
+  const res = await fetch("/api/user/template");
+  if (!res.ok) { alert("Failed to download template. Please try again."); return; }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `CRM_Sheet_${todayISTLabel()}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () => void; userName: string }) {
@@ -145,6 +124,8 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [sheetError, setSheetError] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
+  const [fileSignature, setFileSignature] = useState<string>("");
   const [showConfirm, setShowConfirm] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -159,10 +140,44 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
 
   const parseFile = useCallback((file: File) => {
     setSheetError(null);
+    setUploadedFileName(file.name);
+
+    // Validate that the filename contains today's IST date (CRM_Sheet_DD-MM-YYYY)
+    const dateMatch = file.name.match(/CRM_Sheet_(\d{2}-\d{2}-\d{4})/);
+    if (!dateMatch) {
+      const msg = "Invalid file — please use the official template downloaded from this portal.";
+      setSheetError(msg);
+      toast(msg, "error");
+      setRows([]);
+      return;
+    }
+    const fileDate = dateMatch[1]; // e.g. "23-06-2026"
+    const today = todayISTLabel();
+    if (fileDate !== today) {
+      const msg = `Date mismatch — this sheet is for ${fileDate}, but today is ${today}. Please download today's sheet.`;
+      setSheetError(msg);
+      toast(msg, "error");
+      setRows([]);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const data = new Uint8Array(e.target!.result as ArrayBuffer);
       const wb   = XLSX.read(data, { type: "array", cellDates: true });
+
+      // Extract HMAC signature from the hidden _sig sheet
+      const sigSheet = wb.Sheets["_sig"];
+      const sigRows = sigSheet ? (XLSX.utils.sheet_to_json(sigSheet, { header: 1 }) as string[][]) : [];
+      const fileSignature = sigRows[0]?.[0] ?? "";
+      if (!fileSignature) {
+        const msg = "This file is missing a security signature. Please download a fresh template from this portal.";
+        setSheetError(msg);
+        toast(msg, "error");
+        setRows([]);
+        return;
+      }
+
       const ws   = wb.Sheets[wb.SheetNames[0]];
       const raw: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: "yyyy-mm-dd" });
 
@@ -185,7 +200,7 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
       const parsed: Row[] = dataRows.map((r) => {
         const arr = r as string[];
         // Column order: Sr.No(0) | Date(1) | Arihant Rep(2) | Designation(3) | Client Name(4)
-        //   Buy Side Analyst(5) | BS Analyst Designation(6) | Mode(7) | Company(8)
+        //   Buy Side Person(5) | BS Analyst Designation(6) | Mode(7) | Company(8)
         //   Sector(9) | CMP & Target(10) | Rec(11) | Rationale(12) | Feedback(13)
         const base: Omit<Row, "_errors"> = {
           date:                parseDate((arr[1] ?? "").toString()),
@@ -205,6 +220,7 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
       });
 
       setRows(parsed);
+      setFileSignature(fileSignature);
       setSubmitError("");
       setSubmitSuccess(false);
       if (parsed.length === 0) {
@@ -239,7 +255,7 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
     const res = await fetch("/api/forms/bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ filename: uploadedFileName, signature: fileSignature, rows: payload }),
     });
     const data = await res.json();
     setLoading(false);
@@ -326,7 +342,7 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
               Get the Excel template with correct column headers, a sample row, and reference sheets for valid designations &amp; client names.
             </p>
             <button
-              onClick={() => downloadTemplate(clients, userName)}
+              onClick={() => downloadTemplate()}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-teal-50 text-teal-700 border border-teal-200 text-sm font-semibold hover:bg-teal-100 transition-colors shrink-0"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -179,7 +179,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                       <option>Institutional Equity Sales Manager</option>
                       <option>Equity Research Associate</option>
                       <option>Sr Manager Sales</option>
-                      <option>Buy Side Analyst</option>
+                      <option>Buy Side Person</option>
                       <option>Intern</option>
                     </optgroup>
                     <optgroup label="Institutional Dept">
@@ -223,14 +223,14 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
 
               <div className="space-y-1.5">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Badge n={5} /> Buy Side Analyst <span className="text-red-500">*</span>
+                  <Badge n={5} /> Buy Side Person <span className="text-red-500">*</span>
                 </label>
                 <input type="text" name="analystName" value={form.analystName} onChange={handleChange} required placeholder="Arihant research analyst" className={inputCls} />
               </div>
 
               <div className="space-y-1.5">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Badge n={6} /> Buy Side Analyst Designation
+                  <Badge n={6} /> Buy Side Person Designation
                 </label>
                 <input type="text" name="buySideAnalystDesignation" value={form.buySideAnalystDesignation} onChange={handleChange} placeholder="e.g. Portfolio Manager, Fund Manager…" className={inputCls} />
               </div>

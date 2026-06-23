@@ -66,7 +66,9 @@ export async function PATCH(req: NextRequest) {
   console.log(`[master-admin/admins] PATCH — ${action}d user=${user.email} → role=${user.role} by master_admin=${token.email}`);
   await logAction(req, token,
     action === "promote" ? "PROMOTE_TO_ADMIN" : "DEMOTE_TO_USER",
-    `Target: ${user.name} (${user.email})`
+    action === "promote"
+      ? `Promoted ${user.name} (${user.email}) to Admin`
+      : `Demoted ${user.name} (${user.email}) to User`
   );
   return NextResponse.json({ _id: user._id, name: user.name, email: user.email, role: user.role });
 }

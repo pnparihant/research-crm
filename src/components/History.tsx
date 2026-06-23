@@ -147,7 +147,7 @@ export default function History() {
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                     <Detail label="Designation" value={s.designation} />
                     <Detail label="CMP & Target" value={s.cmpTarget} />
-                    <Detail label="Buy Side Analyst" value={s.analystName} />
+                    <Detail label="Buy Side Person" value={s.analystName} />
                     {s.buySideAnalystDesignation && <Detail label="BS Analyst Designation" value={s.buySideAnalystDesignation} />}
                     {s.rationale && <Detail label="Rationale" value={s.rationale} full />}
                     {s.feedback && <Detail label="Feedback" value={s.feedback} full />}

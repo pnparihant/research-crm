@@ -40,6 +40,6 @@ export async function POST(req: NextRequest) {
   await user.save();
 
   console.log(`[change-password] Password changed successfully for user=${user.email}`);
-  await logAction(req, token, "CHANGE_PASSWORD");
+  await logAction(req, token, "CHANGE_PASSWORD", `Password changed by ${token.name ?? token.email}`);
   return NextResponse.json({ success: true });
 }

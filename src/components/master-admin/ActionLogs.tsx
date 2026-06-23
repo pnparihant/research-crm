@@ -24,11 +24,33 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   ASSIGN_CLIENT:    { label: "Assign Client",    color: "bg-teal-100 text-teal-700" },
   REMOVE_CLIENT:    { label: "Remove Client",    color: "bg-orange-100 text-orange-700" },
   CREATE_ADMIN:     { label: "Create Admin",     color: "bg-purple-100 text-purple-700" },
-  PROMOTE_TO_ADMIN: { label: "Promote to Admin", color: "bg-purple-100 text-purple-700" },
-  DEMOTE_TO_USER:   { label: "Demote to User",   color: "bg-gray-100 text-gray-600" },
+  PROMOTE_TO_ADMIN:          { label: "Promote to Admin",     color: "bg-purple-100 text-purple-700" },
+  DEMOTE_TO_USER:            { label: "Demote to User",       color: "bg-gray-100 text-gray-600" },
+  BULK_UPLOAD_DATE_MISMATCH: { label: "Upload Date Mismatch", color: "bg-red-100 text-red-700" },
+  BULK_UPLOAD_TAMPERED:      { label: "Upload Tampered",      color: "bg-red-200 text-red-800" },
 };
 
 const ALL_ACTIONS = Object.keys(ACTION_LABELS);
+
+function getReadableDetails(log: LogEntry): string {
+  const name = log.userName ?? log.userEmail ?? "Unknown user";
+  const d = log.details ?? "";
+  switch (log.action) {
+    case "LOGIN":           return `${name} logged in via OTP`;
+    case "CHANGE_PASSWORD": return d || `${name} changed their password`;
+    case "FORM_SUBMIT":     return d ? `Submitted form — ${d}` : `${name} submitted a form`;
+    case "CREATE_USER":     return d ? `New user created — ${d.replace(/^Created user:\s*/i, "")}` : "New user created";
+    case "DELETE_USER":     return d ? `User deleted — ${d.replace(/^Deleted user:\s*/i, "")}` : "User deleted";
+    case "CREATE_ADMIN":    return d ? `New admin created — ${d.replace(/^Created admin:\s*/i, "")}` : "New admin created";
+    case "ASSIGN_CLIENT":   return d || `${name} assigned a client`;
+    case "REMOVE_CLIENT":   return d || `${name} removed a client`;
+    case "PROMOTE_TO_ADMIN": return d || `${name} promoted a user to Admin`;
+    case "DEMOTE_TO_USER":            return d || `${name} demoted an admin to User`;
+    case "BULK_UPLOAD_DATE_MISMATCH": return d || `${name} attempted to upload a template with a wrong date`;
+    case "BULK_UPLOAD_TAMPERED":      return d || `${name} attempted to upload a tampered or reused sheet`;
+    default:                          return d || log.action;
+  }
+}
 
 export default function ActionLogs() {
   const { toast } = useToast();
@@ -154,7 +176,7 @@ export default function ActionLogs() {
                         )}
                       </td>
                       <td className="px-5 py-3 font-mono text-gray-600 text-xs whitespace-nowrap">{log.ip}</td>
-                      <td className="px-5 py-3 text-gray-500 max-w-xs truncate" title={log.details ?? ""}>{log.details ?? "—"}</td>
+                      <td className="px-5 py-3 text-gray-500 max-w-xs" title={log.details ?? ""}>{getReadableDetails(log)}</td>
                     </tr>
                   );
                 })}
