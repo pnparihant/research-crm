@@ -28,6 +28,7 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   DEMOTE_TO_USER:            { label: "Demote to User",       color: "bg-gray-100 text-gray-600" },
   BULK_UPLOAD_DATE_MISMATCH: { label: "Upload Date Mismatch", color: "bg-red-100 text-red-700" },
   BULK_UPLOAD_TAMPERED:      { label: "Upload Tampered",      color: "bg-red-200 text-red-800" },
+  EOD_ESCALATION:            { label: "EOD Escalation",       color: "bg-orange-100 text-orange-700" },
 };
 
 const ALL_ACTIONS = Object.keys(ACTION_LABELS);

@@ -5,8 +5,10 @@ import { signOut } from "next-auth/react";
 import AdminSubmissionsTable from "./AdminSubmissionsTable";
 import AssignClients from "./AssignClients";
 import ChangePassword from "@/components/ChangePassword";
+import FillForm from "@/components/FillForm";
+import BulkUpload from "@/components/BulkUpload";
 
-type Tab = "submissions" | "users" | "security";
+type Tab = "submissions" | "fill" | "bulk" | "users" | "security";
 
 export default function AdminDashboard({ session }: { session: Session }) {
   const [tab, setTab] = useState<Tab>("submissions");
@@ -18,6 +20,24 @@ export default function AdminDashboard({ session }: { session: Session }) {
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      ),
+    },
+    {
+      id: "fill",
+      label: "Fill Form",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      ),
+    },
+    {
+      id: "bulk",
+      label: "Bulk Upload",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
         </svg>
       ),
     },
@@ -90,8 +110,10 @@ export default function AdminDashboard({ session }: { session: Session }) {
 
       <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6">
         {tab === "submissions" && <AdminSubmissionsTable />}
-        {tab === "users" && <AssignClients />}
-        {tab === "security" && <ChangePassword accentColor="indigo" />}
+        {tab === "fill"        && <FillForm onSubmitted={() => setTab("submissions")} userName={session.user.name ?? ""} />}
+        {tab === "bulk"        && <BulkUpload onSubmitted={() => setTab("submissions")} userName={session.user.name ?? ""} />}
+        {tab === "users"       && <AssignClients />}
+        {tab === "security"    && <ChangePassword accentColor="indigo" />}
       </main>
     </div>
   );

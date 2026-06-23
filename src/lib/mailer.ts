@@ -99,8 +99,13 @@ export async function sendEODReminderEmail(
           This is a reminder that your daily submission sheet has <strong>not been uploaded</strong> yet for today.
         </p>
         <p style="color:#374151;font-size:14px;">
-          Please log in to the CRM portal and submit your entries as soon as possible.
+          Please log in to the CRM portal and submit your entries immediately.
         </p>
+        <div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin:16px 0;">
+          <p style="color:#92400e;font-size:13px;margin:0;">
+            <strong>Notice:</strong> If your sheet is not submitted within the next <strong>15 minutes</strong>, your manager will be notified.
+          </p>
+        </div>
         <p style="color:#6b7280;font-size:12px;">Check time: <strong>${timestamp}</strong> IST</p>
         <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
         <p style="color:#9ca3af;font-size:11px;text-align:center;">— Arihant Capital Markets CRM</p>
@@ -108,6 +113,62 @@ export async function sendEODReminderEmail(
     `,
   });
   console.log(`[mailer] sendEODReminderEmail — sent to ${to}`);
+}
+
+export async function sendEscalationEmail(
+  to: string,
+  missingUsers: { name: string; email: string }[],
+  timestamp: string,
+  totalUsers: number
+) {
+  console.log(`[mailer] sendEscalationEmail — to=${to}, missing=${missingUsers.length}`);
+  const transporter = createTransporter();
+  const rows = missingUsers
+    .map(
+      (u, i) =>
+        `<tr style="background:${i % 2 === 0 ? "#fef2f2" : "#fff"};">
+          <td style="padding:8px 12px;border:1px solid #fecaca;">${i + 1}</td>
+          <td style="padding:8px 12px;border:1px solid #fecaca;">${u.name}</td>
+          <td style="padding:8px 12px;border:1px solid #fecaca;">${u.email}</td>
+        </tr>`
+    )
+    .join("");
+
+  await transporter.sendMail({
+    from: `"${process.env.SMTP_FROM_NAME ?? "Arihant Capital Markets"}" <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
+    to,
+    subject: `CRM — ESCALATION: ${missingUsers.length} User(s) Still Have Not Submitted`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;padding:32px;border:2px solid #ef4444;border-radius:12px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <h2 style="color:#1e3a5f;margin:0;">Arihant Capital Markets</h2>
+          <p style="color:#6b7280;font-size:13px;margin:4px 0 0;">Research Servicing Tracker — Escalation Alert</p>
+        </div>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
+          <p style="color:#991b1b;font-size:14px;margin:0;">
+            <strong>Action Required:</strong> The following ${missingUsers.length} out of ${totalUsers} user(s) were sent a warning at 7:00 PM IST but have <strong>still not submitted</strong> their daily sheet.
+          </p>
+        </div>
+        <p style="color:#6b7280;font-size:12px;margin-bottom:16px;">Escalation time: <strong>${timestamp}</strong> IST</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#991b1b;color:#fff;">
+              <th style="padding:10px 12px;border:1px solid #991b1b;text-align:left;">#</th>
+              <th style="padding:10px 12px;border:1px solid #991b1b;text-align:left;">Name</th>
+              <th style="padding:10px 12px;border:1px solid #991b1b;text-align:left;">Email</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p style="color:#374151;font-size:13px;margin-top:20px;">
+          You may upload on their behalf via the Master Admin portal if required.
+        </p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+        <p style="color:#9ca3af;font-size:11px;text-align:center;">— Arihant Capital Markets CRM</p>
+      </div>
+    `,
+  });
+  console.log(`[mailer] sendEscalationEmail — sent to ${to}`);
 }
 
 export async function sendEODSummaryEmail(

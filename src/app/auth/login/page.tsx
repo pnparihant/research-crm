@@ -196,7 +196,12 @@ export default function LoginPage() {
     const fullEmail = email.includes('@') ? email : email + EMAIL_DOMAIN
     const result = await signIn('credentials', { email: fullEmail, password, redirect: false })
     setLoading(false)
-    if (result?.error) { setError('Invalid email or password'); return }
+    if (result?.error) {
+      // NextAuth encodes thrown Error messages as the error value
+      const msg = result.error === 'CredentialsSignin' ? 'Invalid email or password' : result.error;
+      setError(msg);
+      return;
+    }
 
     const session = await fetch('/api/auth/session').then((r) => r.json())
     const role: string = session?.user?.role ?? 'user'

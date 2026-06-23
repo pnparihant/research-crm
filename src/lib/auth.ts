@@ -3,6 +3,11 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { connectDB } from "./mongodb";
 import { User } from "@/models/User";
+import { checkRateLimit } from "./rateLimiter";
+
+const WINDOW_MS   = 15 * 60 * 1000; // 15 minutes
+const IP_LIMIT    = 10;              // max 10 login attempts per IP per window
+const EMAIL_LIMIT = 5;               // max 5 login attempts per email per window
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -12,11 +17,29 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         console.log(`[auth] authorize — email=${credentials?.email}`);
         if (!credentials?.email || !credentials?.password) {
           console.log("[auth] authorize FAIL — missing credentials");
           return null;
+        }
+
+        // Rate limit by IP
+        const ip =
+          (req?.headers?.["x-forwarded-for"] as string)?.split(",")[0].trim() ||
+          (req?.headers?.["x-real-ip"] as string) ||
+          "unknown";
+        const ipCheck = checkRateLimit(`login:ip:${ip}`, IP_LIMIT, WINDOW_MS);
+        if (!ipCheck.allowed) {
+          console.log(`[auth] authorize FAIL — IP rate limited: ${ip}`);
+          throw new Error(`Too many login attempts. Please try again in ${Math.ceil((ipCheck.retryAfterSeconds ?? 900) / 60)} minute(s).`);
+        }
+
+        // Rate limit by email
+        const emailCheck = checkRateLimit(`login:email:${credentials.email.toLowerCase()}`, EMAIL_LIMIT, WINDOW_MS);
+        if (!emailCheck.allowed) {
+          console.log(`[auth] authorize FAIL — email rate limited: ${credentials.email}`);
+          throw new Error(`Too many login attempts for this account. Please try again in ${Math.ceil((emailCheck.retryAfterSeconds ?? 900) / 60)} minute(s).`);
         }
 
         await connectDB();
