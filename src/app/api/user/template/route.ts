@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
   const clientNames = clientDocs.map((c) => c.name as string);
   const buffer = generateTemplateBuffer(clientNames, token.id as string, dateLabel);
 
-  return new NextResponse(buffer, {
+  return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="CRM_Sheet_${dateLabel}.xlsx"`,
