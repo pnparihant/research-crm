@@ -3,10 +3,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { connectDB } from "./mongodb";
 import { User } from "@/models/User";
-import { checkRateLimit } from "./rateLimiter";
-
-const WINDOW_MS   = 15 * 60 * 1000; // 15 minutes
-const EMAIL_LIMIT = 5;               // max 5 login attempts per email per window
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -21,13 +17,6 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) {
           console.log("[auth] authorize FAIL — missing credentials");
           return null;
-        }
-
-        // Rate limit by email
-        const emailCheck = checkRateLimit(`login:email:${credentials.email.toLowerCase()}`, EMAIL_LIMIT, WINDOW_MS);
-        if (!emailCheck.allowed) {
-          console.log(`[auth] authorize FAIL — email rate limited: ${credentials.email}`);
-          throw new Error(`Too many login attempts for this account. Please try again in ${Math.ceil((emailCheck.retryAfterSeconds ?? 900) / 60)} minute(s).`);
         }
 
         await connectDB();

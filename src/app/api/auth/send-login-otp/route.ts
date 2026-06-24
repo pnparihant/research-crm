@@ -4,24 +4,10 @@ import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { sendLoginOtpEmail } from "@/lib/mailer";
 import { sendLoginOtpSms } from "@/lib/sms";
-import { checkRateLimit } from "@/lib/rateLimiter";
-
-const WINDOW_MS   = 15 * 60 * 1000; // 15 minutes
-const EMAIL_LIMIT = 3;               // max 3 OTP requests per email per window
 
 export async function POST(req: NextRequest) {
   const { email } = await req.json();
   if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
-
-  // Rate limit by email
-  const emailCheck = checkRateLimit(`otp:email:${email.toLowerCase()}`, EMAIL_LIMIT, WINDOW_MS);
-  if (!emailCheck.allowed) {
-    console.log(`[send-login-otp] Rate limited by email: ${email}, retry after ${emailCheck.retryAfterSeconds}s`);
-    return NextResponse.json(
-      { error: `Too many OTP requests for this account. Please try again in ${Math.ceil((emailCheck.retryAfterSeconds ?? WINDOW_MS / 1000) / 60)} minute(s).` },
-      { status: 429, headers: { "Retry-After": String(emailCheck.retryAfterSeconds) } }
-    );
-  }
 
   await connectDB();
   const user = await User.findOne({ email: email.toLowerCase() });
