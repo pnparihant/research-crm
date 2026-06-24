@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const users = await User.collection
     .find(
       { $or: [{ role: "user" }, { _id: new mongoose.Types.ObjectId(token.id as string) }] },
-      { projection: { name: 1, email: 1, phone: 1, role: 1, assignedClients: 1, createdAt: 1, twoFactorEnabled: 1 } }
+      { projection: { name: 1, email: 1, phone: 1, role: 1, designation: 1, assignedClients: 1, createdAt: 1, twoFactorEnabled: 1 } }
     )
     .toArray();
 
@@ -80,12 +80,10 @@ export async function PATCH(req: NextRequest) {
 
   await connectDB();
 
-  // Use native collection to bypass Mongoose model cache issues with schema changes
   const col = User.collection;
   const userId = new mongoose.Types.ObjectId(id);
   const cId = new mongoose.Types.ObjectId(clientId);
 
-  // Fetch user and client names for human-readable audit log
   const ClientCol = mongoose.connection.collection("clients");
   const [targetUser, clientDoc] = await Promise.all([
     col.findOne({ _id: userId }, { projection: { name: 1, email: 1 } }),
@@ -122,121 +120,5 @@ export async function PATCH(req: NextRequest) {
 
   await logAction(req, token, action === "add" ? "ASSIGN_CLIENT" : "REMOVE_CLIENT",
     `${action === "add" ? "Assigned" : "Removed"} client ${clientLabel} ${action === "add" ? "to" : "from"} user ${targetLabel}`);
-  return NextResponse.json({ success: true });
-}
-
-export async function POST(req: NextRequest) {
-  console.log("[admin/users] POST — create user");
-  const token = await getToken({ req });
-  if (!token) {
-    console.log("[admin/users] POST FAIL — unauthorized");
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (token.role !== "master_admin") {
-    console.log(`[admin/users] POST FAIL — forbidden, role=${token.role}`);
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const { name, email, password, phone } = await req.json();
-  if (!name || !email || !password) {
-    console.log("[admin/users] POST FAIL — missing required fields");
-    return NextResponse.json({ error: "Name, email and password are required" }, { status: 400 });
-  }
-  if (password.length < 8) {
-    console.log("[admin/users] POST FAIL — password too short");
-    return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
-  }
-
-  await connectDB();
-  const existing = await User.findOne({ email: email.toLowerCase() });
-  if (existing) {
-    console.log(`[admin/users] POST FAIL — email already exists: ${email}`);
-    return NextResponse.json({ error: "Email already exists" }, { status: 409 });
-  }
-
-  const bcrypt = await import("bcryptjs");
-  const hashed = await bcrypt.hash(password, 12);
-  const user = await User.create({
-    name,
-    email: email.toLowerCase(),
-    password: hashed,
-    role: "user",
-    phone: phone || null,
-  });
-
-  console.log(`[admin/users] POST — created user email=${email.toLowerCase()} by master_admin=${token.email}`);
-  await logAction(req, token, "CREATE_USER", `Created user: ${name} (${email.toLowerCase()})`);
-  return NextResponse.json(
-    { _id: user._id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt },
-    { status: 201 }
-  );
-}
-
-export async function PUT(req: NextRequest) {
-  const id = new URL(req.url).searchParams.get("id");
-  console.log(`[admin/users] PUT — userId=${id}`);
-  const token = await getToken({ req });
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (token.role !== "master_admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (!id) return NextResponse.json({ error: "User ID required" }, { status: 400 });
-
-  const { name, email, phone, password } = await req.json();
-  if (!name || !email) return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
-  if (password && password.length < 8) return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
-
-  await connectDB();
-  const user = await User.findById(id);
-  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
-  if (user.role !== "user") return NextResponse.json({ error: "Can only edit regular users" }, { status: 400 });
-
-  const conflict = await User.findOne({ email: email.toLowerCase(), _id: { $ne: user._id } });
-  if (conflict) return NextResponse.json({ error: "Email already in use" }, { status: 409 });
-
-  user.name = name;
-  user.email = email.toLowerCase();
-  user.phone = phone || null;
-  if (password) {
-    const bcrypt = await import("bcryptjs");
-    user.password = await bcrypt.hash(password, 12);
-  }
-  await user.save();
-
-  console.log(`[admin/users] PUT — updated user id=${id} by master_admin=${token.email}`);
-  await logAction(req, token, "EDIT_USER", `Edited user: ${user.name} (${user.email})`);
-  return NextResponse.json({ _id: user._id, name: user.name, email: user.email, phone: user.phone, createdAt: user.createdAt });
-}
-
-export async function DELETE(req: NextRequest) {
-  const id = new URL(req.url).searchParams.get("id");
-  console.log(`[admin/users] DELETE — userId=${id}`);
-  const token = await getToken({ req });
-  if (!token) {
-    console.log("[admin/users] DELETE FAIL — unauthorized");
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (token.role !== "master_admin") {
-    console.log(`[admin/users] DELETE FAIL — forbidden, role=${token.role}`);
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  if (!id) {
-    console.log("[admin/users] DELETE FAIL — user ID missing");
-    return NextResponse.json({ error: "User ID required" }, { status: 400 });
-  }
-
-  await connectDB();
-  const user = await User.findById(id);
-  if (!user) {
-    console.log(`[admin/users] DELETE FAIL — user not found, id=${id}`);
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-  if (user.role !== "user") {
-    console.log(`[admin/users] DELETE FAIL — cannot delete non-user role=${user.role}`);
-    return NextResponse.json({ error: "Can only delete regular users" }, { status: 400 });
-  }
-
-  await logAction(req, token, "DELETE_USER", `Deleted user: ${user.name} (${user.email})`);
-  await User.findByIdAndDelete(id);
-  console.log(`[admin/users] DELETE — deleted user email=${user.email} by master_admin=${token.email}`);
   return NextResponse.json({ success: true });
 }

@@ -39,6 +39,8 @@ const EMAIL_DOMAIN = '@arihantcapital.com'
 const TAB_CONFIG: Record<LoginTab, {
   label: string
   expectedRoles: string[]
+  sendOtpUrl: string
+  verifyOtpUrl: string
   accent: string
   ring: string
   btn: string
@@ -49,6 +51,8 @@ const TAB_CONFIG: Record<LoginTab, {
   client: {
     label: 'Client Login',
     expectedRoles: ['user'],
+    sendOtpUrl: '/api/auth/send-login-otp',
+    verifyOtpUrl: '/api/auth/verify-login-otp',
     accent: 'teal',
     ring: 'focus:ring-teal-500',
     btn: 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800 disabled:bg-teal-300',
@@ -64,6 +68,8 @@ const TAB_CONFIG: Record<LoginTab, {
   admin: {
     label: 'Admin Login',
     expectedRoles: ['admin', 'master_admin'],
+    sendOtpUrl: '/api/admin/auth/send-login-otp',
+    verifyOtpUrl: '/api/admin/auth/verify-login-otp',
     accent: 'indigo',
     ring: 'focus:ring-indigo-500',
     btn: 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-indigo-300',
@@ -217,7 +223,7 @@ export default function LoginPage() {
 
   async function sendEmailOtp(emailOverride?: string) {
     setLoading(true)
-    const res = await fetch('/api/auth/send-login-otp', {
+    const res = await fetch(cfg.sendOtpUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: emailOverride ?? email }),
@@ -245,7 +251,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
 
-    const res = await fetch('/api/auth/verify-login-otp', {
+    const res = await fetch(cfg.verifyOtpUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, otp }),

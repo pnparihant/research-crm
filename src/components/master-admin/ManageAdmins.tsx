@@ -324,29 +324,28 @@ export default function ManageAdmins() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="text-left px-5 py-3 font-semibold text-gray-600">Name</th>
-                <th className="text-left px-5 py-3 font-semibold text-gray-600">Email</th>
-                <th className="text-left px-5 py-3 font-semibold text-gray-600">Phone</th>
-                <th className="text-left px-5 py-3 font-semibold text-gray-600">2FA</th>
-                <th className="text-left px-5 py-3 font-semibold text-gray-600">Joined</th>
-                <th className="px-5 py-3" />
+                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Name</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide hidden sm:table-cell">Email</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide hidden md:table-cell">Phone</th>
+                <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">2FA</th>
+                <th className="px-4 py-2.5 w-20" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-100">
               {admins.map((a) => (
-                <tr key={a._id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 font-medium text-gray-900">{a.name}</td>
-                  <td className="px-5 py-3 text-gray-500">{a.email}</td>
-                  <td className="px-5 py-3 text-gray-400">{a.phone || "—"}</td>
-                  <td className="px-5 py-3">
+                <tr key={a._id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-gray-900 leading-snug">{a.name}</p>
+                    <p className="text-xs text-gray-400 sm:hidden mt-0.5">{a.email}</p>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">{a.email}</td>
+                  <td className="px-4 py-3 text-gray-400 text-xs hidden md:table-cell">{a.phone || "—"}</td>
+                  <td className="px-4 py-3">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${a.twoFactorEnabled ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                      {a.twoFactorEnabled ? "Enabled" : "Not set"}
+                      {a.twoFactorEnabled ? "On" : "Off"}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-gray-400">
-                    {new Date(a.createdAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}
-                  </td>
-                  <td className="px-5 py-3 text-right">
+                  <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => { setDemoteTarget(a); setDemoteConfirm(true); }}
                       className="text-xs text-red-400 hover:text-red-600 font-medium hover:underline transition-colors"

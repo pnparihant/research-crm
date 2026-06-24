@@ -4,11 +4,12 @@ import { Session } from "next-auth";
 import { signOut } from "next-auth/react";
 import AdminSubmissionsTable from "./AdminSubmissionsTable";
 import AssignClients from "./AssignClients";
+import ManageClients from "./ManageClients";
 import ChangePassword from "@/components/ChangePassword";
 import FillForm from "@/components/FillForm";
 import BulkUpload from "@/components/BulkUpload";
 
-type Tab = "submissions" | "fill" | "bulk" | "users" | "security";
+type Tab = "submissions" | "fill" | "bulk" | "clients" | "users" | "security";
 
 export default function AdminDashboard({ session }: { session: Session }) {
   const [tab, setTab] = useState<Tab>("submissions");
@@ -38,6 +39,15 @@ export default function AdminDashboard({ session }: { session: Session }) {
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+      ),
+    },
+    {
+      id: "clients",
+      label: "Manage Clients",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
         </svg>
       ),
     },
@@ -112,6 +122,7 @@ export default function AdminDashboard({ session }: { session: Session }) {
         {tab === "submissions" && <AdminSubmissionsTable />}
         {tab === "fill"        && <FillForm onSubmitted={() => setTab("submissions")} userName={session.user.name ?? ""} />}
         {tab === "bulk"        && <BulkUpload onSubmitted={() => setTab("submissions")} userName={session.user.name ?? ""} />}
+        {tab === "clients"     && <ManageClients />}
         {tab === "users"       && <AssignClients />}
         {tab === "security"    && <ChangePassword accentColor="indigo" />}
       </main>

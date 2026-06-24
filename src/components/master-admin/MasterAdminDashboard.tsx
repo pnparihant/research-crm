@@ -6,10 +6,11 @@ import MasterAdminSubmissions from "./MasterAdminSubmissions";
 import ManageAdmins from "./ManageAdmins";
 import ManageUsers from "@/components/admin/ManageUsers";
 import AssignClients from "@/components/admin/AssignClients";
+import ManageClients from "@/components/admin/ManageClients";
 import ActionLogs from "./ActionLogs";
 import ChangePassword from "@/components/ChangePassword";
 
-type Tab = "submissions" | "admins" | "users" | "assign" | "logs" | "security";
+type Tab = "submissions" | "admins" | "users" | "clients" | "assign" | "logs" | "security";
 
 export default function MasterAdminDashboard({ session }: { session: Session }) {
   const [tab, setTab] = useState<Tab>("submissions");
@@ -39,6 +40,15 @@ export default function MasterAdminDashboard({ session }: { session: Session }) 
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      ),
+    },
+    {
+      id: "clients",
+      label: "Manage Clients",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
         </svg>
       ),
     },
@@ -119,6 +129,7 @@ export default function MasterAdminDashboard({ session }: { session: Session }) 
         {tab === "submissions" && <MasterAdminSubmissions />}
         {tab === "admins" && <ManageAdmins />}
         {tab === "users" && <ManageUsers />}
+        {tab === "clients" && <ManageClients />}
         {tab === "assign" && <AssignClients />}
         {tab === "logs" && <ActionLogs />}
         {tab === "security" && <ChangePassword accentColor="purple" />}

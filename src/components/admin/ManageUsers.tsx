@@ -2,11 +2,17 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 
+const DESIGNATIONS = [
+  { group: "Research Dept", options: ["Director of Equity Research", "Executive Vice President - Institutional Equity Sales", "Sr Equity Research Analyst", "Equity Research Analyst", "Institutional Equity Sales Manager", "Equity Research Associate", "Sr Manager Sales", "Buy Side Person", "Intern"] },
+  { group: "Institutional Dept", options: ["Head Institutional Equities", "Institutional Sales Trader", "Institutional Dealer", "Institution Client Relationship", "Insti Backoffice Executive", "Back Office Operations"] },
+];
+
 interface UserRow {
   _id: string;
   name: string;
   email: string;
   phone?: string;
+  designation?: string;
   createdAt: string;
 }
 
@@ -29,14 +35,14 @@ export default function ManageUsers() {
 
   // Create form
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", designation: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
   // Edit form
   const [editTarget, setEditTarget] = useState<UserRow | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", password: "", designation: "" });
   const [editShowPassword, setEditShowPassword] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
@@ -58,7 +64,7 @@ export default function ManageUsers() {
     e.preventDefault();
     setFormError("");
     setSaving(true);
-    const res = await fetch("/api/admin/users", {
+    const res = await fetch("/api/master-admin/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -67,14 +73,14 @@ export default function ManageUsers() {
     setSaving(false);
     if (!res.ok) { setFormError(data.error ?? "Failed to create user"); return; }
     setUsers((prev) => [data, ...prev]);
-    setForm({ name: "", email: "", password: "", phone: "" });
+    setForm({ name: "", email: "", password: "", phone: "", designation: "" });
     setShowForm(false);
     toast(`User "${data.name}" created successfully`, "success");
   }
 
   function openEdit(u: UserRow) {
     setEditTarget(u);
-    setEditForm({ name: u.name, email: u.email, phone: u.phone ?? "", password: "" });
+    setEditForm({ name: u.name, email: u.email, phone: u.phone ?? "", password: "", designation: u.designation ?? "" });
     setEditError("");
     setEditShowPassword(false);
   }
@@ -84,7 +90,7 @@ export default function ManageUsers() {
     if (!editTarget) return;
     setEditError("");
     setEditSaving(true);
-    const res = await fetch(`/api/admin/users?id=${editTarget._id}`, {
+    const res = await fetch(`/api/master-admin/users?id=${editTarget._id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(editForm),
@@ -100,7 +106,7 @@ export default function ManageUsers() {
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
-    const res = await fetch(`/api/admin/users?id=${deleteTarget._id}`, { method: "DELETE" });
+    const res = await fetch(`/api/master-admin/users?id=${deleteTarget._id}`, { method: "DELETE" });
     setDeleting(false);
     if (!res.ok) { toast("Failed to delete user", "error"); setDeleteTarget(null); return; }
     setUsers((prev) => prev.filter((u) => u._id !== deleteTarget._id));
@@ -176,6 +182,21 @@ export default function ManageUsers() {
                       <EyeIcon open={editShowPassword} />
                     </button>
                   </div>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Designation</label>
+                  <select
+                    value={editForm.designation}
+                    onChange={(e) => setEditForm((p) => ({ ...p, designation: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none bg-white"
+                  >
+                    <option value="">Select designation</option>
+                    {DESIGNATIONS.map((g) => (
+                      <optgroup key={g.group} label={g.group}>
+                        {g.options.map((o) => <option key={o}>{o}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -292,6 +313,21 @@ export default function ManageUsers() {
                     </button>
                   </div>
                 </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Designation <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <select
+                    value={form.designation}
+                    onChange={(e) => setForm((p) => ({ ...p, designation: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none bg-white"
+                  >
+                    <option value="">Select designation</option>
+                    {DESIGNATIONS.map((g) => (
+                      <optgroup key={g.group} label={g.group}>
+                        {g.options.map((o) => <option key={o}>{o}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="flex gap-3 pt-1">
                 <button type="submit" disabled={saving} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors">
@@ -331,23 +367,29 @@ export default function ManageUsers() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Name</th>
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Email</th>
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Phone</th>
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600 hidden md:table-cell">Joined</th>
-                  <th className="px-5 py-3" />
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Name</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide hidden sm:table-cell">Email</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide hidden lg:table-cell">Designation</th>
+                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide hidden xl:table-cell">Phone</th>
+                  <th className="px-4 py-2.5 w-20" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-100">
                 {filtered.map((u) => (
-                  <tr key={u._id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3 font-medium text-gray-900">{u.name}</td>
-                    <td className="px-5 py-3 text-gray-500">{u.email}</td>
-                    <td className="px-5 py-3 text-gray-400">{u.phone || "—"}</td>
-                    <td className="px-5 py-3 text-gray-400 hidden md:table-cell">
-                      {new Date(u.createdAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}
+                  <tr key={u._id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900 leading-snug">{u.name}</p>
+                      <p className="text-xs text-gray-400 sm:hidden mt-0.5">{u.email}</p>
+                      {u.designation && <p className="text-xs text-indigo-500 mt-0.5 lg:hidden">{u.designation}</p>}
                     </td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">{u.email}</td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      {u.designation
+                        ? <span className="inline-block max-w-[200px] truncate text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium" title={u.designation}>{u.designation}</span>
+                        : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-gray-400 text-xs hidden xl:table-cell">{u.phone || "—"}</td>
+                    <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-3">
                         <button
                           onClick={() => openEdit(u)}
