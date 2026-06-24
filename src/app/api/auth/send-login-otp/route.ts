@@ -7,23 +7,11 @@ import { sendLoginOtpSms } from "@/lib/sms";
 import { checkRateLimit } from "@/lib/rateLimiter";
 
 const WINDOW_MS   = 15 * 60 * 1000; // 15 minutes
-const IP_LIMIT    = 5;               // max 5 OTP requests per IP per window
 const EMAIL_LIMIT = 3;               // max 3 OTP requests per email per window
 
 export async function POST(req: NextRequest) {
   const { email } = await req.json();
   if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
-
-  // Rate limit by IP
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? req.headers.get("x-real-ip") ?? "unknown";
-  const ipCheck = checkRateLimit(`otp:ip:${ip}`, IP_LIMIT, WINDOW_MS);
-  if (!ipCheck.allowed) {
-    console.log(`[send-login-otp] Rate limited by IP: ${ip}, retry after ${ipCheck.retryAfterSeconds}s`);
-    return NextResponse.json(
-      { error: `Too many requests. Please try again in ${Math.ceil((ipCheck.retryAfterSeconds ?? WINDOW_MS / 1000) / 60)} minute(s).` },
-      { status: 429, headers: { "Retry-After": String(ipCheck.retryAfterSeconds) } }
-    );
-  }
 
   // Rate limit by email
   const emailCheck = checkRateLimit(`otp:email:${email.toLowerCase()}`, EMAIL_LIMIT, WINDOW_MS);
