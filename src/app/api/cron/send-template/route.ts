@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
         .map((ac: { client: mongoose.Types.ObjectId }) => clientMap[ac.client?.toString()] ?? "")
         .filter(Boolean);
 
-      const buffer = generateTemplateBuffer(clientNames, user._id.toString(), dateLabel);
+      const buffer = await generateTemplateBuffer(clientNames, user._id.toString(), dateLabel);
       await sendDailyTemplateEmail(user.email, user.name, dateLabel, buffer);
       sent++;
     } catch (err) {

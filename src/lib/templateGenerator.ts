@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import crypto from "crypto";
 
 export function signTemplate(userId: string, dateLabel: string): string {
@@ -55,49 +55,44 @@ const TEMPLATE_HEADERS = [
   "Feedback",
 ];
 
-/**
- * Generates an Excel template buffer with headers only (no sample row).
- * Embeds an HMAC signature in a hidden _sig sheet so the server can verify
- * the file is genuine and was generated for this specific user and date.
- */
-export function generateTemplateBuffer(
+export async function generateTemplateBuffer(
   clientNames: string[] = [],
   userId?: string,
   dateLabel?: string
-): Buffer {
-  const wb = XLSX.utils.book_new();
+): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
 
   // Entries sheet — headers only
-  const ws = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS]);
-  ws["!cols"] = TEMPLATE_HEADERS.map((h) => ({ wch: Math.max(h.length, 22) }));
-  XLSX.utils.book_append_sheet(wb, ws, "Entries");
+  const wsEntries = wb.addWorksheet("Entries");
+  wsEntries.addRow(TEMPLATE_HEADERS);
+  TEMPLATE_HEADERS.forEach((h, i) => {
+    wsEntries.getColumn(i + 1).width = Math.max(h.length, 22);
+  });
 
   // Reference sheet
-  const refRows: (string | undefined)[][] = [
-    ["Valid Designations", "Valid Modes", "Valid Recommendations"],
-    ...DESIGNATIONS.map((d, i) => [d, MODES[i] ?? "", RECS[i] ?? ""]),
-  ];
-  const wsRef = XLSX.utils.aoa_to_sheet(refRows);
-  wsRef["!cols"] = [{ wch: 50 }, { wch: 20 }, { wch: 25 }];
-  XLSX.utils.book_append_sheet(wb, wsRef, "Reference");
+  const wsRef = wb.addWorksheet("Reference");
+  wsRef.addRow(["Valid Designations", "Valid Modes", "Valid Recommendations"]);
+  DESIGNATIONS.forEach((d, i) => wsRef.addRow([d, MODES[i] ?? "", RECS[i] ?? ""]));
+  wsRef.getColumn(1).width = 50;
+  wsRef.getColumn(2).width = 20;
+  wsRef.getColumn(3).width = 25;
 
   // My Clients sheet
   if (clientNames.length > 0) {
-    const wsClients = XLSX.utils.aoa_to_sheet([
-      ["Your Assigned Clients"],
-      ...clientNames.map((n) => [n]),
-    ]);
-    wsClients["!cols"] = [{ wch: 40 }];
-    XLSX.utils.book_append_sheet(wb, wsClients, "My Clients");
+    const wsClients = wb.addWorksheet("My Clients");
+    wsClients.addRow(["Your Assigned Clients"]);
+    clientNames.forEach((n) => wsClients.addRow([n]));
+    wsClients.getColumn(1).width = 40;
   }
 
   // Hidden signature sheet — HMAC(userId:dateLabel) so the server can verify authenticity
   if (userId && dateLabel) {
     const sig = signTemplate(userId, dateLabel);
-    const wsSig = XLSX.utils.aoa_to_sheet([[sig]]);
-    XLSX.utils.book_append_sheet(wb, wsSig, "_sig");
+    const wsSig = wb.addWorksheet("_sig");
+    wsSig.state = "veryHidden";
+    wsSig.addRow([sig]);
   }
 
-  const raw = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-  return Buffer.from(raw);
+  const arrayBuffer = await wb.xlsx.writeBuffer();
+  return Buffer.from(arrayBuffer);
 }

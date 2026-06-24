@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   }).replace(/\//g, "-");
 
   const clientNames = clientDocs.map((c) => c.name as string);
-  const buffer = generateTemplateBuffer(clientNames, token.id as string, dateLabel);
+  const buffer = await generateTemplateBuffer(clientNames, token.id as string, dateLabel);
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

@@ -59,6 +59,12 @@ export function checkRateLimit(
     };
   }
 
+  // Block just expired — reset so the user gets a clean window
+  if (entry.blockedUntil && now >= entry.blockedUntil) {
+    entry.timestamps = [];
+    entry.blockedUntil = undefined;
+  }
+
   // Slide the window: drop timestamps older than windowMs
   entry.timestamps = entry.timestamps.filter((t) => now - t < windowMs);
 

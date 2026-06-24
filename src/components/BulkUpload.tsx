@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import * as XLSX from "xlsx";
 
 interface ClientItem { _id: string; name: string }
 interface StockItem  { StockName: string; sect_name: string }
@@ -42,41 +41,6 @@ const DESIGNATIONS = [
 
 const MODES = ["Phone", "Online Meet", "Physical"];
 const RECS  = ["Buy", "Sell", "Hold"];
-
-// Columns match the spec exactly — Sr.No and Arihant Representative are present but auto-handled
-const TEMPLATE_HEADERS = [
-  "Sr.No",
-  "Date",
-  "Arihant Representative",
-  "Designation",
-  "Client Name",
-  "Buy Side Person",
-  "Buy Side Person Designation",
-  "Mode of Communication",
-  "Company",
-  "Sector",
-  "CMP & Target",
-  "Buy / Sell / Hold",
-  "Rationale",
-  "Feedback",
-];
-
-// Parse a date string in DD/MM/YYYY or YYYY-MM-DD or Excel serial
-function parseDate(raw: string): string {
-  const s = raw.trim();
-  if (!s) return "";
-  // Excel serial number
-  if (/^\d{5}$/.test(s)) {
-    const d = XLSX.SSF.parse_date_code(Number(s));
-    if (d) return `${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`;
-  }
-  // DD/MM/YYYY
-  const dmyMatch = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2].padStart(2,"0")}-${dmyMatch[1].padStart(2,"0")}`;
-  // Already YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  return s;
-}
 
 function validateRow(row: Omit<Row, "_errors">, _clients: ClientItem[], stocks: StockItem[]): string[] {
   const errs: string[] = [];
@@ -135,10 +99,7 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
     fetch("/api/mssql/stocks").then(r => r.json()).then(d => setStocks(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
 
-  // Required columns that must be present (subset — Sr.No and Arihant Rep are auto)
-  const REQUIRED_HEADERS = ["Date", "Client Name", "Mode of Communication", "Company", "Buy / Sell / Hold"];
-
-  const parseFile = useCallback((file: File) => {
+  const parseFile = useCallback(async (file: File) => {
     setSheetError(null);
     setUploadedFileName(file.name);
 
@@ -151,7 +112,7 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
       setRows([]);
       return;
     }
-    const fileDate = dateMatch[1]; // e.g. "23-06-2026"
+    const fileDate = dateMatch[1];
     const today = todayISTLabel();
     if (fileDate !== today) {
       const msg = `Date mismatch — this sheet is for ${fileDate}, but today is ${today}. Please download today's sheet.`;
@@ -161,75 +122,43 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const data = new Uint8Array(e.target!.result as ArrayBuffer);
-      const wb   = XLSX.read(data, { type: "array", cellDates: true });
+    const formData = new FormData();
+    formData.append("file", file);
 
-      // Extract HMAC signature from the hidden _sig sheet
-      const sigSheet = wb.Sheets["_sig"];
-      const sigRows = sigSheet ? (XLSX.utils.sheet_to_json(sigSheet, { header: 1 }) as string[][]) : [];
-      const fileSignature = sigRows[0]?.[0] ?? "";
-      if (!fileSignature) {
-        const msg = "This file is missing a security signature. Please download a fresh template from this portal.";
+    let parsed: { rows: Omit<Row, "_errors">[]; signature: string };
+    try {
+      const res = await fetch("/api/forms/parse-bulk", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = data.error ?? "Failed to parse file";
         setSheetError(msg);
         toast(msg, "error");
         setRows([]);
         return;
       }
+      parsed = data;
+    } catch {
+      const msg = "Failed to parse file. Please try again.";
+      setSheetError(msg);
+      toast(msg, "error");
+      setRows([]);
+      return;
+    }
 
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const raw: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: "yyyy-mm-dd" });
+    const rows: Row[] = parsed.rows.map((base) => {
+      const row = { ...base };
+      return { ...row, _errors: validateRow(row, clients, stocks) };
+    });
 
-      // Validate header row
-      const headerRow = (raw[0] ?? []) as string[];
-      const missing = REQUIRED_HEADERS.filter(
-        (h) => !headerRow.some((cell) => String(cell ?? "").trim().toLowerCase() === h.toLowerCase())
-      );
-      if (missing.length > 0) {
-        const msg = `Wrong Excel sheet — missing columns: ${missing.join(", ")}. Please use the provided template.`;
-        setSheetError(msg);
-        toast(msg, "error");
-        setRows([]);
-        return;
-      }
-
-      // Skip header row
-      const dataRows = raw.slice(1).filter(r => (r as string[]).some(Boolean));
-
-      const parsed: Row[] = dataRows.map((r) => {
-        const arr = r as string[];
-        // Column order: Sr.No(0) | Date(1) | Arihant Rep(2) | Designation(3) | Client Name(4)
-        //   Buy Side Person(5) | BS Analyst Designation(6) | Mode(7) | Company(8)
-        //   Sector(9) | CMP & Target(10) | Rec(11) | Rationale(12) | Feedback(13)
-        const base: Omit<Row, "_errors"> = {
-          date:                parseDate((arr[1] ?? "").toString()),
-          designation:         (arr[3] ?? "").toString().trim(),
-          clientName:          (arr[4] ?? "").toString().trim(),
-          analystName:         (arr[5] ?? "").toString().trim(),
-          buySideAnalystDesignation: (arr[6] ?? "").toString().trim(),
-          modeOfCommunication: (arr[7] ?? "").toString().trim(),
-          company:             (arr[8] ?? "").toString().trim(),
-          sector:              (arr[9] ?? "").toString().trim(),
-          cmpTarget:           (arr[10] ?? "").toString().trim(),
-          recommendation:      (arr[11] ?? "").toString().trim(),
-          rationale:           (arr[12] ?? "").toString().trim(),
-          feedback:            (arr[13] ?? "").toString().trim(),
-        };
-        return { ...base, _errors: validateRow(base, clients, stocks) };
-      });
-
-      setRows(parsed);
-      setFileSignature(fileSignature);
-      setSubmitError("");
-      setSubmitSuccess(false);
-      if (parsed.length === 0) {
-        const msg = "The sheet appears to be empty — no data rows found.";
-        setSheetError(msg);
-        toast(msg, "warning");
-      }
-    };
-    reader.readAsArrayBuffer(file);
+    setRows(rows);
+    setFileSignature(parsed.signature);
+    setSubmitError("");
+    setSubmitSuccess(false);
+    if (rows.length === 0) {
+      const msg = "The sheet appears to be empty — no data rows found.";
+      setSheetError(msg);
+      toast(msg, "warning");
+    }
   }, [clients, stocks, toast]);
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
