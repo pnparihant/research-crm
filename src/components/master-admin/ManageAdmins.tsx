@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
 
 interface AdminUser {
-  _id: string; name: string; email: string;
+  _id: string; name: string; email: string; phone?: string;
   role: string; twoFactorEnabled: boolean; createdAt: string;
 }
 
 interface EmployeeUser {
-  _id: string; name: string; email: string; createdAt: string;
+  _id: string; name: string; email: string; phone?: string; createdAt: string;
 }
 
 export default function ManageAdmins() {
@@ -227,7 +227,8 @@ export default function ManageAdmins() {
               <div className="sm:col-span-2">
                 <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
                 <div className="relative">
-                  <input type={showPassword ? "text" : "password"} value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required minLength={8}
+                  <input type={showPassword ? "text" : "password"} value={form.password} onChange={(e) => { const v = e.target.value; setForm((p) => ({ ...p, password: v })); }} required minLength={8}
+                    autoComplete="new-password" name="new-password"
                     className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                     placeholder="Min. 8 characters" />
                   <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
@@ -325,6 +326,7 @@ export default function ManageAdmins() {
               <tr>
                 <th className="text-left px-5 py-3 font-semibold text-gray-600">Name</th>
                 <th className="text-left px-5 py-3 font-semibold text-gray-600">Email</th>
+                <th className="text-left px-5 py-3 font-semibold text-gray-600">Phone</th>
                 <th className="text-left px-5 py-3 font-semibold text-gray-600">2FA</th>
                 <th className="text-left px-5 py-3 font-semibold text-gray-600">Joined</th>
                 <th className="px-5 py-3" />
@@ -335,6 +337,7 @@ export default function ManageAdmins() {
                 <tr key={a._id} className="hover:bg-gray-50">
                   <td className="px-5 py-3 font-medium text-gray-900">{a.name}</td>
                   <td className="px-5 py-3 text-gray-500">{a.email}</td>
+                  <td className="px-5 py-3 text-gray-400">{a.phone || "—"}</td>
                   <td className="px-5 py-3">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${a.twoFactorEnabled ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                       {a.twoFactorEnabled ? "Enabled" : "Not set"}

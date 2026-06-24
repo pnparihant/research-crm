@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { logAction } from "@/lib/auditLog";
+import { maskEmail, maskPhone } from "@/lib/mask";
 
 export async function GET(req: NextRequest) {
   console.log("[master-admin/admins] GET — fetching all admins");
@@ -18,9 +19,10 @@ export async function GET(req: NextRequest) {
   }
 
   await connectDB();
-  const admins = await User.find({ role: "admin" }, "name email role createdAt twoFactorEnabled").lean();
+  const admins = await User.find({ role: "admin" }, "name email phone role createdAt twoFactorEnabled").lean();
+  const masked = admins.map((a) => ({ ...a, email: maskEmail(a.email), phone: maskPhone(a.phone) }));
   console.log(`[master-admin/admins] GET — returned ${admins.length} admins`);
-  return NextResponse.json(admins);
+  return NextResponse.json(masked);
 }
 
 export async function PATCH(req: NextRequest) {

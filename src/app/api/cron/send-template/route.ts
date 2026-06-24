@@ -17,12 +17,15 @@ export async function POST(req: NextRequest) {
 
   await connectDB();
 
-  // Fetch all users and admins (not master_admin — they manage, don't submit)
+  // If ?testEmail=someone@example.com is passed, send only to that one user (for testing)
+  const testEmail = new URL(req.url).searchParams.get("testEmail");
+
+  const query = testEmail
+    ? { email: testEmail.toLowerCase() }
+    : { role: { $in: ["user", "admin"] } };
+
   const users = await User.collection
-    .find(
-      { role: { $in: ["user", "admin"] } },
-      { projection: { name: 1, email: 1, assignedClients: 1 } }
-    )
+    .find(query, { projection: { name: 1, email: 1, assignedClients: 1 } })
     .toArray();
 
   if (users.length === 0) {

@@ -15,6 +15,39 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
+interface PasswordFieldProps {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  visible: boolean;
+  onToggle: () => void;
+  autoComplete: string;
+  inputCls: string;
+}
+
+function PasswordField({ label, value, onChange, visible, onToggle, autoComplete, inputCls }: PasswordFieldProps) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <div className="relative">
+        <input
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(e) => { const v = e.target.value; onChange(v); }}
+          required
+          autoComplete={autoComplete}
+          className={inputCls}
+          placeholder="••••••••"
+        />
+        <button type="button" onClick={onToggle}
+          className="absolute right-0 top-1/2 -translate-y-1/2 p-3 text-gray-400 hover:text-gray-600" tabIndex={-1}>
+          <EyeIcon open={visible} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ChangePassword({ accentColor = "teal" }: { accentColor?: "teal" | "indigo" | "purple" }) {
   const { toast } = useToast();
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
@@ -23,6 +56,7 @@ export default function ChangePassword({ accentColor = "teal" }: { accentColor?:
 
   const ring = { teal: "focus:ring-teal-500", indigo: "focus:ring-indigo-500", purple: "focus:ring-purple-500" }[accentColor];
   const btn  = { teal: "bg-teal-700 hover:bg-teal-800 disabled:bg-teal-400", indigo: "bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400", purple: "bg-purple-700 hover:bg-purple-800 disabled:bg-purple-400" }[accentColor];
+  const inputCls = `w-full px-3.5 py-2.5 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${ring} focus:border-transparent`;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,31 +79,6 @@ export default function ChangePassword({ accentColor = "teal" }: { accentColor?:
     setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
   }
 
-  const inputCls = `w-full px-3.5 py-2.5 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 ${ring} focus:border-transparent`;
-
-  function PasswordField({ field, label, showKey, autoComplete }: { field: keyof typeof form; label: string; showKey: keyof typeof show; autoComplete: string }) {
-    return (
-      <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-        <div className="relative">
-          <input
-            type={show[showKey] ? "text" : "password"}
-            value={form[field]}
-            onChange={(e) => setForm((p) => ({ ...p, [field]: e.target.value }))}
-            required
-            autoComplete={autoComplete}
-            className={inputCls}
-            placeholder="••••••••"
-          />
-          <button type="button" onClick={() => setShow((p) => ({ ...p, [showKey]: !p[showKey] }))}
-            className="absolute right-0 top-1/2 -translate-y-1/2 p-3 text-gray-400 hover:text-gray-600" tabIndex={-1}>
-            <EyeIcon open={show[showKey]} />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden max-w-md">
       <div className="px-6 py-5 border-b border-gray-100">
@@ -79,12 +88,26 @@ export default function ChangePassword({ accentColor = "teal" }: { accentColor?:
 
       <div className="px-6 py-5">
         <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
-          {/* Hidden dummy fields stop browsers from autofilling saved credentials into the password fields */}
           <input type="text" name="username" autoComplete="username" aria-hidden="true" className="hidden" tabIndex={-1} readOnly />
           <input type="password" name="prevent-autofill" autoComplete="new-password" aria-hidden="true" className="hidden" tabIndex={-1} readOnly />
-          <PasswordField field="currentPassword" label="Current Password" showKey="current" autoComplete="current-password" />
-          <PasswordField field="newPassword" label="New Password" showKey="new" autoComplete="new-password" />
-          <PasswordField field="confirmPassword" label="Confirm New Password" showKey="confirm" autoComplete="new-password" />
+          <PasswordField
+            label="Current Password" value={form.currentPassword}
+            onChange={(v) => setForm((p) => ({ ...p, currentPassword: v }))}
+            visible={show.current} onToggle={() => setShow((p) => ({ ...p, current: !p.current }))}
+            autoComplete="current-password" inputCls={inputCls}
+          />
+          <PasswordField
+            label="New Password" value={form.newPassword}
+            onChange={(v) => setForm((p) => ({ ...p, newPassword: v }))}
+            visible={show.new} onToggle={() => setShow((p) => ({ ...p, new: !p.new }))}
+            autoComplete="new-password" inputCls={inputCls}
+          />
+          <PasswordField
+            label="Confirm New Password" value={form.confirmPassword}
+            onChange={(v) => setForm((p) => ({ ...p, confirmPassword: v }))}
+            visible={show.confirm} onToggle={() => setShow((p) => ({ ...p, confirm: !p.confirm }))}
+            autoComplete="new-password" inputCls={inputCls}
+          />
           <div className="pt-1">
             <button type="submit" disabled={loading}
               className={`${btn} text-white font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors`}>

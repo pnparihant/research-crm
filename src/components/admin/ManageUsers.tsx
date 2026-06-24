@@ -10,17 +10,41 @@ interface UserRow {
   createdAt: string;
 }
 
+const EyeIcon = ({ open }: { open: boolean }) =>
+  open ? (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+    </svg>
+  ) : (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
+  );
+
 export default function ManageUsers() {
   const { toast } = useToast();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Create form
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "", phone: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+
+  // Edit form
+  const [editTarget, setEditTarget] = useState<UserRow | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [editShowPassword, setEditShowPassword] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  // Delete
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -48,6 +72,31 @@ export default function ManageUsers() {
     toast(`User "${data.name}" created successfully`, "success");
   }
 
+  function openEdit(u: UserRow) {
+    setEditTarget(u);
+    setEditForm({ name: u.name, email: u.email, phone: u.phone ?? "", password: "" });
+    setEditError("");
+    setEditShowPassword(false);
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editTarget) return;
+    setEditError("");
+    setEditSaving(true);
+    const res = await fetch(`/api/admin/users?id=${editTarget._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editForm),
+    });
+    const data = await res.json();
+    setEditSaving(false);
+    if (!res.ok) { setEditError(data.error ?? "Failed to update user"); return; }
+    setUsers((prev) => prev.map((u) => u._id === editTarget._id ? { ...u, ...data } : u));
+    toast(`User "${data.name}" updated successfully`, "success");
+    setEditTarget(null);
+  }
+
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -66,6 +115,83 @@ export default function ManageUsers() {
 
   return (
     <>
+      {/* Edit modal */}
+      {editTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Edit User</h3>
+                <p className="text-sm text-gray-500 mt-0.5">{editTarget.email}</p>
+              </div>
+              <button onClick={() => setEditTarget(null)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {editError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2.5 text-sm mb-4">{editError}</div>
+            )}
+
+            <form onSubmit={handleEdit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Full Name</label>
+                  <input
+                    type="text" required value={editForm.name}
+                    onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+                  <input
+                    type="email" required value={editForm.email}
+                    onChange={(e) => setEditForm((p) => ({ ...p, email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Phone <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <input
+                    type="tel" value={editForm.phone}
+                    onChange={(e) => setEditForm((p) => ({ ...p, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Leave blank to keep unchanged"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">New Password <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <div className="relative">
+                    <input
+                      type={editShowPassword ? "text" : "password"} minLength={8} value={editForm.password}
+                      onChange={(e) => { const v = e.target.value; setEditForm((p) => ({ ...p, password: v })); }}
+                      autoComplete="new-password" name="new-password"
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Leave blank to keep unchanged"
+                    />
+                    <button type="button" onClick={() => setEditShowPassword((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
+                      <EyeIcon open={editShowPassword} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-1 justify-end">
+                <button type="button" onClick={() => setEditTarget(null)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={editSaving} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors">
+                  {editSaving ? "Saving…" : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Delete confirmation modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -156,15 +282,13 @@ export default function ManageUsers() {
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"} required minLength={8} value={form.password}
-                      onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                      onChange={(e) => { const v = e.target.value; setForm((p) => ({ ...p, password: v })); }}
+                      autoComplete="new-password" name="new-password"
                       className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       placeholder="Min. 8 characters"
                     />
                     <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
-                      {showPassword
-                        ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                        : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                      }
+                      <EyeIcon open={showPassword} />
                     </button>
                   </div>
                 </div>
@@ -209,7 +333,7 @@ export default function ManageUsers() {
                 <tr>
                   <th className="text-left px-5 py-3 font-semibold text-gray-600">Name</th>
                   <th className="text-left px-5 py-3 font-semibold text-gray-600">Email</th>
-                  <th className="text-left px-5 py-3 font-semibold text-gray-600 hidden sm:table-cell">Phone</th>
+                  <th className="text-left px-5 py-3 font-semibold text-gray-600">Phone</th>
                   <th className="text-left px-5 py-3 font-semibold text-gray-600 hidden md:table-cell">Joined</th>
                   <th className="px-5 py-3" />
                 </tr>
@@ -219,17 +343,25 @@ export default function ManageUsers() {
                   <tr key={u._id} className="hover:bg-gray-50">
                     <td className="px-5 py-3 font-medium text-gray-900">{u.name}</td>
                     <td className="px-5 py-3 text-gray-500">{u.email}</td>
-                    <td className="px-5 py-3 text-gray-400 hidden sm:table-cell">{u.phone || "—"}</td>
+                    <td className="px-5 py-3 text-gray-400">{u.phone || "—"}</td>
                     <td className="px-5 py-3 text-gray-400 hidden md:table-cell">
                       {new Date(u.createdAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <button
-                        onClick={() => setDeleteTarget(u)}
-                        className="text-xs text-red-400 hover:text-red-600 font-medium hover:underline transition-colors"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          onClick={() => openEdit(u)}
+                          className="text-xs text-indigo-500 hover:text-indigo-700 font-medium hover:underline transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(u)}
+                          className="text-xs text-red-400 hover:text-red-600 font-medium hover:underline transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
