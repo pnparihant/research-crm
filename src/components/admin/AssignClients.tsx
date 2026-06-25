@@ -87,8 +87,8 @@ export default function AssignClients() {
 
   const filteredClients = allClients.filter((c) =>
     !search ||
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.code.toLowerCase().includes(search.toLowerCase())
+    c.name?.toLowerCase().includes(search.toLowerCase()) ||
+    c.code?.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) return (

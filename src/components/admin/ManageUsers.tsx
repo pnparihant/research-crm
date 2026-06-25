@@ -299,7 +299,7 @@ export default function ManageUsers() {
         </div>
       )}
 
-      <div className="space-y-5 max-w-3xl">
+      <div className="space-y-5 w-full">
         {/* Header + add form */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-1">
@@ -416,57 +416,64 @@ export default function ManageUsers() {
               {search ? `No users match "${search}"` : "No users yet. Add one above."}
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide">Name</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide hidden sm:table-cell">Email</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide hidden lg:table-cell">Designation</th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide hidden xl:table-cell">Phone</th>
-                  <th className="px-4 py-2.5 w-20" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filtered.map((u) => (
-                  <tr key={u._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900 leading-snug">{u.name}</p>
-                      <p className="text-xs text-gray-400 sm:hidden mt-0.5">{u.email}</p>
-                      {u.designation && <p className="text-xs text-indigo-500 mt-0.5 lg:hidden">{u.designation}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">{u.email}</td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
-                      {u.designation
-                        ? <span className="inline-block max-w-[200px] truncate text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium" title={u.designation}>{u.designation}</span>
-                        : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs hidden xl:table-cell">{u.phone || "—"}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <button
-                          onClick={() => openEdit(u)}
-                          className="text-xs text-indigo-500 hover:text-indigo-700 font-medium hover:underline transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => setResetMpinTarget(u)}
-                          className="text-xs text-amber-500 hover:text-amber-700 font-medium hover:underline transition-colors"
-                        >
-                          Reset MPIN
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(u)}
-                          className="text-xs text-red-400 hover:text-red-600 font-medium hover:underline transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+            <>
+            {/* Desktop table — md and above */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[15%]">Name</th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[25%]">Email</th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[30%] hidden lg:table-cell">Designation</th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[15%] hidden xl:table-cell">Phone</th>
+                    <th className="px-4 py-2.5 text-right font-semibold text-gray-500 text-xs uppercase tracking-wide">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filtered.map((u) => (
+                    <tr key={u._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-gray-900 leading-snug">{u.name}</p>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs break-all">{u.email}</td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        {u.designation
+                          ? <span className="inline-block max-w-[220px] truncate text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium" title={u.designation}>{u.designation}</span>
+                          : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-gray-400 text-xs hidden xl:table-cell">{u.phone || "—"}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2 flex-wrap">
+                          <button onClick={() => openEdit(u)} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium hover:underline transition-colors whitespace-nowrap">Edit</button>
+                          <button onClick={() => setResetMpinTarget(u)} className="text-xs text-amber-500 hover:text-amber-700 font-medium hover:underline transition-colors whitespace-nowrap">Reset MPIN</button>
+                          <button onClick={() => setDeleteTarget(u)} className="text-xs text-red-400 hover:text-red-600 font-medium hover:underline transition-colors whitespace-nowrap">Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile cards — below md */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {filtered.map((u) => (
+                <div key={u._id} className="px-4 py-3 space-y-1">
+                  <p className="font-semibold text-gray-900 text-sm">{u.name}</p>
+                  <p className="text-xs text-gray-500 break-all">{u.email}</p>
+                  {u.designation && (
+                    <span className="inline-block text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">{u.designation}</span>
+                  )}
+                  {u.phone && <p className="text-xs text-gray-400">{u.phone}</p>}
+                  <div className="flex items-center gap-3 pt-1">
+                    <button onClick={() => openEdit(u)} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium hover:underline transition-colors">Edit</button>
+                    <button onClick={() => setResetMpinTarget(u)} className="text-xs text-amber-500 hover:text-amber-700 font-medium hover:underline transition-colors">Reset MPIN</button>
+                    <button onClick={() => setDeleteTarget(u)} className="text-xs text-red-400 hover:text-red-600 font-medium hover:underline transition-colors">Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
           )}
         </div>
       </div>

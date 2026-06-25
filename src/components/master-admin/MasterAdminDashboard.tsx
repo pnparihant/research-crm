@@ -125,7 +125,7 @@ export default function MasterAdminDashboard({ session }: { session: Session }) 
         </div>
       </div>
 
-      <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6">
+      <main className="w-full px-4 sm:px-6 py-6">
         {tab === "submissions" && <MasterAdminSubmissions />}
         {tab === "admins" && <ManageAdmins />}
         {tab === "users" && <ManageUsers />}
