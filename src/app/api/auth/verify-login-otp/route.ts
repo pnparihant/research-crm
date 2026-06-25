@@ -44,8 +44,9 @@ export async function POST(req: NextRequest) {
     console.log(`[verify-login-otp] OTP matched for ${email}`);
   }
 
-  await User.updateOne({ _id: user._id }, { $unset: { loginOtp: "", loginOtpExpiry: "" } });
-  console.log(`[verify-login-otp] OTP cleared, login successful for ${email} (role=${user?.role})`);
+  // OTP is intentionally NOT cleared — it stays valid till midnight so the user can
+  // log out and log back in with the same OTP during the same calendar day (IST).
+  console.log(`[verify-login-otp] Login successful for ${email} (role=${user?.role})`);
 
   // Build a fake token-like object for logging since the session doesn't exist yet
   const fakeToken = { id: user._id.toString(), name: user.name, email: user.email, role: user.role };
