@@ -16,6 +16,7 @@ interface Submission {
   buySideAnalystDesignation: string;
   rationale: string;
   feedback: string;
+  others: string;
   submittedAt: string;
 }
 
@@ -151,6 +152,7 @@ export default function History() {
                     {s.buySideAnalystDesignation && <Detail label="BS Analyst Designation" value={s.buySideAnalystDesignation} />}
                     {s.rationale && <Detail label="Rationale" value={s.rationale} full />}
                     {s.feedback && <Detail label="Feedback" value={s.feedback} full />}
+                    {s.others && <Detail label="Others" value={s.others} full />}
                   </dl>
                 </div>
               )}

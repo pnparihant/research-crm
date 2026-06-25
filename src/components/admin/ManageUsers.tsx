@@ -51,6 +51,10 @@ export default function ManageUsers() {
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Reset MPIN
+  const [resetMpinTarget, setResetMpinTarget] = useState<UserRow | null>(null);
+  const [resettingMpin, setResettingMpin] = useState(false);
+
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -103,6 +107,20 @@ export default function ManageUsers() {
     setEditTarget(null);
   }
 
+  async function handleResetMpin() {
+    if (!resetMpinTarget) return;
+    setResettingMpin(true);
+    const res = await fetch("/api/admin/users/reset-mpin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: resetMpinTarget._id }),
+    });
+    setResettingMpin(false);
+    if (!res.ok) { toast("Failed to reset MPIN", "error"); setResetMpinTarget(null); return; }
+    toast(`MPIN reset for "${resetMpinTarget.name}" — they will set a new one on next login`, "success");
+    setResetMpinTarget(null);
+  }
+
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -121,6 +139,40 @@ export default function ManageUsers() {
 
   return (
     <>
+      {/* Reset MPIN confirmation modal */}
+      {resetMpinTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Reset MPIN?</h3>
+                <p className="text-sm text-gray-500">{resetMpinTarget.name} · {resetMpinTarget.email}</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-5">
+              This will clear <span className="font-semibold">{resetMpinTarget.name}</span>&apos;s MPIN. They will be prompted to set a new one on their next login.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setResetMpinTarget(null)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={handleResetMpin}
+                disabled={resettingMpin}
+                className="px-4 py-2 text-sm font-semibold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-60 rounded-lg transition-colors"
+              >
+                {resettingMpin ? "Resetting…" : "Reset MPIN"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit modal */}
       {editTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -396,6 +448,12 @@ export default function ManageUsers() {
                           className="text-xs text-indigo-500 hover:text-indigo-700 font-medium hover:underline transition-colors"
                         >
                           Edit
+                        </button>
+                        <button
+                          onClick={() => setResetMpinTarget(u)}
+                          className="text-xs text-amber-500 hover:text-amber-700 font-medium hover:underline transition-colors"
+                        >
+                          Reset MPIN
                         </button>
                         <button
                           onClick={() => setDeleteTarget(u)}

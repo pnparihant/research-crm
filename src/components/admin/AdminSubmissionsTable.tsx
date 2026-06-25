@@ -22,6 +22,7 @@ interface Row {
   buySideAnalystDesignation: string;
   rationale: string;
   feedback: string;
+  others: string;
   submittedBy: string;
   submittedByEmail: string;
   submittedAt: string;
@@ -60,6 +61,7 @@ function mapSubmissions(data: Record<string, unknown>[]): Row[] {
       buySideAnalystDesignation: (s.buySideAnalystDesignation as string) ?? "",
       rationale: (s.rationale as string) ?? "",
       feedback: (s.feedback as string) ?? "",
+      others: (s.others as string) ?? "",
       submittedBy: user?.name ?? "—",
       submittedByEmail: user?.email ?? "—",
       submittedAt: new Date(s.submittedAt as string).toLocaleString("en-IN"),
@@ -161,6 +163,7 @@ export default function AdminSubmissionsTable() {
     { field: "buySideAnalystDesignation", headerName: "Buy Side Person Designation", width: 200, filterOperators: strOps },
     { field: "rationale", headerName: "Rationale", width: 200, filterOperators: strOps },
     { field: "feedback", headerName: "Feedback", width: 200, filterOperators: strOps },
+    { field: "others", headerName: "Others", width: 200, filterOperators: strOps },
     {
       field: "submittedBy", headerName: "Submitted By", width: 150, filterOperators: strOps,
       renderCell: (p: GridRenderCellParams) => (
@@ -275,6 +278,7 @@ export default function AdminSubmissionsTable() {
                       ["BS Analyst Designation", r.buySideAnalystDesignation],
                       ["Rationale", r.rationale],
                       ["Feedback", r.feedback],
+                      ["Others", r.others],
                       ["Submitted By", r.submittedBy],
                       ["Submitted At", r.submittedAt],
                     ].map(([label, val]) => (

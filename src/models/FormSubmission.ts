@@ -15,6 +15,7 @@ export interface IFormSubmission extends Document {
   buySideAnalystDesignation: string;
   rationale: string;
   feedback: string;
+  others: string;
   submittedAt: Date;
 }
 
@@ -34,6 +35,7 @@ const FormSubmissionSchema = new Schema<IFormSubmission>(
     buySideAnalystDesignation: { type: String, default: "" },
     rationale: { type: String, default: "" },
     feedback: { type: String, default: "" },
+    others: { type: String, default: "" },
     submittedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

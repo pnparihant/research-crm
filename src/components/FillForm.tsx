@@ -19,6 +19,7 @@ const EMPTY_FORM = {
   buySideAnalystDesignation: "",
   rationale: "",
   feedback: "",
+  others: "",
 };
 
 const MODES = ["Phone", "Online Meet", "Physical"] as const;
@@ -411,6 +412,12 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                   <Badge n={13} /> Feedback
                 </label>
                 <textarea name="feedback" value={form.feedback} onChange={handleChange} rows={3} placeholder="Client feedback or response…" className={`${inputCls} resize-none`} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Badge n={14} /> Others
+                </label>
+                <textarea name="others" value={form.others} onChange={handleChange} rows={3} placeholder="Any other notes or remarks…" className={`${inputCls} resize-none`} />
               </div>
             </div>
           </div>

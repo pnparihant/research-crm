@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { date, salesPerson, clientName, designation, modeOfCommunication, company, sector, cmpTarget, recommendation, analystName, buySideAnalystDesignation, rationale, feedback } = body;
+  const { date, salesPerson, clientName, designation, modeOfCommunication, company, sector, cmpTarget, recommendation, analystName, buySideAnalystDesignation, rationale, feedback, others } = body;
 
   if (!date || !salesPerson || !clientName || !designation || !modeOfCommunication || !company || !cmpTarget || !recommendation || !analystName) {
     console.log(`[forms] POST FAIL — missing required fields, user=${token.email}`);
@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
     buySideAnalystDesignation: buySideAnalystDesignation ?? "",
     rationale: rationale ?? "",
     feedback: feedback ?? "",
+    others: others ?? "",
     submittedAt: new Date(),
   });
 

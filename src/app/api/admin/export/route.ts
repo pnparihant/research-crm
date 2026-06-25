@@ -23,6 +23,7 @@ type SubmissionLean = {
   cmpTarget?: string;
   rationale?: string;
   feedback?: string;
+  others?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -97,6 +98,7 @@ export async function POST(req: NextRequest) {
       { header: "Buy / Sell / Hold",             key: "rec",       width: 14 },
       { header: "Rationale",                     key: "rationale", width: 35 },
       { header: "Feedback",                      key: "feedback",  width: 35 },
+      { header: "Others",                        key: "others",    width: 35 },
       { header: "Submitted By",                  key: "subBy",     width: 22 },
       { header: "Email",                         key: "email",     width: 30 },
       { header: "Submitted At",                  key: "subAt",     width: 20 },
@@ -131,6 +133,7 @@ export async function POST(req: NextRequest) {
         rec,
         rationale: s.rationale,
         feedback:  s.feedback,
+        others:    s.others,
         subBy:     user?.name ?? "",
         email:     user?.email ?? "",
         subAt:     subAt

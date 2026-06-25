@@ -4,7 +4,7 @@ import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
 type LoginTab = 'client' | 'admin'
-type Step = 'credentials' | 'email-otp' | 'forgot'
+type Step = 'credentials' | 'mpin' | 'set-mpin' | 'forgot-mpin' | 'reset-mpin' | 'forgot'
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -39,8 +39,6 @@ const EMAIL_DOMAIN = '@arihantcapital.com'
 const TAB_CONFIG: Record<LoginTab, {
   label: string
   expectedRoles: string[]
-  sendOtpUrl: string
-  verifyOtpUrl: string
   accent: string
   ring: string
   btn: string
@@ -51,8 +49,6 @@ const TAB_CONFIG: Record<LoginTab, {
   client: {
     label: 'Client Login',
     expectedRoles: ['user'],
-    sendOtpUrl: '/api/auth/send-login-otp',
-    verifyOtpUrl: '/api/auth/verify-login-otp',
     accent: 'teal',
     ring: 'focus:ring-teal-500',
     btn: 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800 disabled:bg-teal-300',
@@ -68,8 +64,6 @@ const TAB_CONFIG: Record<LoginTab, {
   admin: {
     label: 'Admin Login',
     expectedRoles: ['admin', 'master_admin'],
-    sendOtpUrl: '/api/admin/auth/send-login-otp',
-    verifyOtpUrl: '/api/admin/auth/verify-login-otp',
     accent: 'indigo',
     ring: 'focus:ring-indigo-500',
     btn: 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-indigo-300',
@@ -84,7 +78,8 @@ const TAB_CONFIG: Record<LoginTab, {
   },
 }
 
-function OtpBoxes({ value, onChange, ring }: { value: string; onChange: (v: string) => void; ring: string }) {
+// 6-box digit input — masked prop hides digits (for MPIN), unmasked shows them (for OTP)
+function PinBoxes({ value, onChange, ring, masked = false }: { value: string; onChange: (v: string) => void; ring: string; masked?: boolean }) {
   const refs = useRef<(HTMLInputElement | null)[]>([])
 
   useEffect(() => {
@@ -129,7 +124,7 @@ function OtpBoxes({ value, onChange, ring }: { value: string; onChange: (v: stri
         <input
           key={i}
           ref={(el) => { refs.current[i] = el }}
-          type="text"
+          type={masked ? 'password' : 'text'}
           inputMode="numeric"
           maxLength={1}
           value={value[i] ?? ''}
@@ -137,7 +132,8 @@ function OtpBoxes({ value, onChange, ring }: { value: string; onChange: (v: stri
           onKeyDown={(e) => handleKey(i, e)}
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
-          className={`w-11 h-13 text-center text-xl font-mono font-bold border-2 rounded-xl focus:outline-none focus:ring-2 ${ring} transition-all ${
+          autoComplete="off"
+          className={`w-11 text-center text-xl font-mono font-bold border-2 rounded-xl focus:outline-none focus:ring-2 ${ring} transition-all ${
             value[i] ? 'border-current bg-gray-50 text-gray-900' : 'border-gray-200 bg-white text-gray-400'
           }`}
           style={{ height: '3.25rem' }}
@@ -155,20 +151,29 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [otp, setOtp] = useState('')
+  const [mpin, setMpin] = useState('')
+  const [mpinConfirm, setMpinConfirm] = useState('')
+  const [resetOtp, setResetOtp] = useState('')
+  const [resetMpin, setResetMpin] = useState('')
+  const [resetMpinConfirm, setResetMpinConfirm] = useState('')
+  const [resetOtpSent, setResetOtpSent] = useState(false)
   const [devOtp, setDevOtp] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotSent, setForgotSent] = useState(false)
   const [forgotResetUrl, setForgotResetUrl] = useState('')
-  const [resendCooldown, setResendCooldown] = useState(0)
 
   function switchTab(tab: LoginTab) {
     setActiveTab(tab)
     setEmail('')
     setPassword('')
-    setOtp('')
+    setMpin('')
+    setMpinConfirm('')
+    setResetOtp('')
+    setResetMpin('')
+    setResetMpinConfirm('')
+    setResetOtpSent(false)
     setDevOtp('')
     setError('')
     setStep('credentials')
@@ -176,7 +181,6 @@ export default function LoginPage() {
     setForgotSent(false)
     setForgotEmail('')
     setForgotResetUrl('')
-    setResendCooldown(0)
   }
 
   async function handleForgot(e: React.FormEvent) {
@@ -197,7 +201,6 @@ export default function LoginPage() {
 
   async function handleCredentials(e: React.FormEvent) {
     e.preventDefault()
-    // Ref guard prevents double-submission even if button re-renders enabled
     if (submittingRef.current) return
     submittingRef.current = true
     setError('')
@@ -222,51 +225,88 @@ export default function LoginPage() {
       }
 
       setEmail(fullEmail)
-      // Keep loading=true through sendEmailOtp — no gap where button is re-enabled
-      await sendEmailOtp(fullEmail)
+
+      // Check if MPIN is set → go to enter-mpin or set-mpin
+      const statusRes = await fetch('/api/auth/mpin-status')
+      const statusData = await statusRes.json()
+      setLoading(false)
+
+      setMpin('')
+      setMpinConfirm('')
+      setStep(statusData.mpinSet ? 'mpin' : 'set-mpin')
     } finally {
       submittingRef.current = false
     }
   }
 
-  async function sendEmailOtp(emailOverride?: string) {
-    setLoading(true)
-    const res = await fetch(cfg.sendOtpUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: emailOverride ?? email }),
-    })
-    const data = await res.json()
-    setLoading(false)
-    if (!res.ok) { setError(data.error ?? 'Failed to send OTP'); return }
-
-    setOtp('')
-    setStep('email-otp')
-    if (data.otp) setDevOtp(data.otp)
-
-    setResendCooldown(30)
-    const timer = setInterval(() => {
-      setResendCooldown((c) => {
-        if (c <= 1) { clearInterval(timer); return 0 }
-        return c - 1
-      })
-    }, 1000)
-  }
-
-  async function handleEmailOtp(e: React.FormEvent) {
+  async function handleVerifyMpin(e: React.FormEvent) {
     e.preventDefault()
-    if (otp.length < 6) return
+    if (mpin.length < 6) return
     setError('')
     setLoading(true)
 
-    const res = await fetch(cfg.verifyOtpUrl, {
+    const res = await fetch('/api/auth/verify-mpin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, otp }),
+      body: JSON.stringify({ mpin }),
     })
     const data = await res.json()
     setLoading(false)
-    if (!res.ok) { setError(data.error ?? 'Invalid OTP'); return }
+    if (!res.ok) { setError(data.error ?? 'Incorrect MPIN'); return }
+
+    const s = await fetch('/api/auth/session').then((r) => r.json())
+    router.push(redirectForRole(s?.user?.role ?? 'user'))
+  }
+
+  async function handleSetMpin(e: React.FormEvent) {
+    e.preventDefault()
+    if (mpin.length < 6) return
+    if (mpin !== mpinConfirm) { setError('MPINs do not match'); return }
+    setError('')
+    setLoading(true)
+
+    const res = await fetch('/api/auth/set-mpin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mpin }),
+    })
+    const data = await res.json()
+    setLoading(false)
+    if (!res.ok) { setError(data.error ?? 'Failed to set MPIN'); return }
+
+    const s = await fetch('/api/auth/session').then((r) => r.json())
+    router.push(redirectForRole(s?.user?.role ?? 'user'))
+  }
+
+  async function handleSendResetOtp() {
+    setError('')
+    setLoading(true)
+    const res = await fetch('/api/auth/forgot-mpin', { method: 'POST' })
+    const data = await res.json()
+    setLoading(false)
+    if (!res.ok) { setError(data.error ?? 'Failed to send OTP'); return }
+    setResetOtpSent(true)
+    setResetOtp('')
+    setResetMpin('')
+    setResetMpinConfirm('')
+    if (data.otp) setDevOtp(data.otp)
+  }
+
+  async function handleResetMpin(e: React.FormEvent) {
+    e.preventDefault()
+    if (resetOtp.length < 6 || resetMpin.length < 6) return
+    if (resetMpin !== resetMpinConfirm) { setError('MPINs do not match'); return }
+    setError('')
+    setLoading(true)
+
+    const res = await fetch('/api/auth/reset-mpin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ otp: resetOtp, mpin: resetMpin }),
+    })
+    const data = await res.json()
+    setLoading(false)
+    if (!res.ok) { setError(data.error ?? 'Failed to reset MPIN'); return }
 
     const s = await fetch('/api/auth/session').then((r) => r.json())
     router.push(redirectForRole(s?.user?.role ?? 'user'))
@@ -279,7 +319,6 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="text-center mb-6">
-          
           <h2 className="text-base font-semibold text-gray-700">Arihant Capital Markets</h2>
           <p className="text-xs text-gray-400 mt-0.5">Research Servicing Tracker</p>
         </div>
@@ -307,21 +346,43 @@ export default function LoginPage() {
           <div className="p-7">
             {/* Step header */}
             <div className="text-center mb-6">
-              {step === 'email-otp' ? (
+              {step === 'mpin' ? (
                 <>
                   <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-teal-50 mb-3">
                     <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
-                  <h1 className="text-lg font-bold text-gray-900">Check your inbox</h1>
+                  <h1 className="text-lg font-bold text-gray-900">Enter your MPIN</h1>
                   <p className="text-sm text-gray-500 mt-1">
-                    OTP sent to <span className="font-medium text-gray-700">{maskEmail(email)}</span>
+                    Signed in as <span className="font-medium text-gray-700">{maskEmail(email)}</span>
                   </p>
-                  <p className="text-xs text-teal-700 mt-2 bg-teal-50 border border-teal-100 rounded-lg px-3 py-1.5 inline-block">
-                    Valid till midnight (IST) · Do not share
+                </>
+              ) : step === 'set-mpin' ? (
+                <>
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-50 mb-3">
+                    <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+                  </div>
+                  <h1 className="text-lg font-bold text-gray-900">Set your MPIN</h1>
+                  <p className="text-sm text-gray-500 mt-1">Create a 6-digit PIN for quick login</p>
+                </>
+              ) : step === 'forgot-mpin' ? (
+                <>
+                  <h1 className="text-lg font-bold text-gray-900">Reset MPIN</h1>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {resetOtpSent
+                      ? 'Enter the OTP sent to your email, then set a new MPIN'
+                      : `We'll send an OTP to ${maskEmail(email)}`}
                   </p>
+                </>
+              ) : step === 'reset-mpin' ? (
+                <>
+                  <h1 className="text-lg font-bold text-gray-900">New MPIN</h1>
+                  <p className="text-sm text-gray-500 mt-1">OTP verified — set your new 6-digit MPIN</p>
                 </>
               ) : step === 'forgot' ? (
                 <>
@@ -414,32 +475,25 @@ export default function LoginPage() {
               </form>
             )}
 
-            {/* OTP step */}
-            {step === 'email-otp' && (
-              <form onSubmit={handleEmailOtp} className="space-y-5">
-                {devOtp && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 text-center">
-                    <span className="font-semibold">Dev OTP: </span>
-                    <span className="font-mono tracking-widest text-base">{devOtp}</span>
-                  </div>
-                )}
-
-                <OtpBoxes value={otp} onChange={setOtp} ring={cfg.ring} />
+            {/* Enter MPIN step */}
+            {step === 'mpin' && (
+              <form onSubmit={handleVerifyMpin} className="space-y-5">
+                <PinBoxes value={mpin} onChange={setMpin} ring={cfg.ring} masked />
 
                 <button
                   type="submit"
-                  disabled={loading || otp.length < 6}
+                  disabled={loading || mpin.length < 6}
                   className={`w-full ${cfg.btn} text-white font-semibold py-2.5 rounded-xl transition-all text-sm shadow-sm`}
                 >
                   {loading
                     ? <span className="flex items-center justify-center gap-2"><Spinner />Verifying…</span>
-                    : 'Verify OTP'}
+                    : 'Confirm'}
                 </button>
 
                 <div className="flex items-center justify-between text-sm pt-1">
                   <button
                     type="button"
-                    onClick={() => { setStep('credentials'); setOtp(''); setDevOtp(''); setError('') }}
+                    onClick={() => { setStep('credentials'); setMpin(''); setError('') }}
                     className="flex items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -449,14 +503,133 @@ export default function LoginPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={resendCooldown > 0 || loading}
-                    onClick={() => sendEmailOtp()}
-                    className="text-teal-600 hover:text-teal-700 disabled:text-gray-400 font-medium transition-colors"
+                    onClick={() => { setStep('forgot-mpin'); setResetOtpSent(false); setError(''); setDevOtp('') }}
+                    className="text-gray-400 hover:text-gray-600 font-medium transition-colors"
                   >
-                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
+                    Forgot MPIN?
                   </button>
                 </div>
               </form>
+            )}
+
+            {/* Set MPIN step (first time) */}
+            {step === 'set-mpin' && (
+              <form onSubmit={handleSetMpin} className="space-y-5">
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide text-center">Enter MPIN</p>
+                  <PinBoxes value={mpin} onChange={setMpin} ring={cfg.ring} masked />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide text-center">Confirm MPIN</p>
+                  <PinBoxes value={mpinConfirm} onChange={setMpinConfirm} ring={cfg.ring} masked />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || mpin.length < 6 || mpinConfirm.length < 6}
+                  className={`w-full ${cfg.btn} text-white font-semibold py-2.5 rounded-xl transition-all text-sm shadow-sm`}
+                >
+                  {loading
+                    ? <span className="flex items-center justify-center gap-2"><Spinner />Saving…</span>
+                    : 'Set MPIN & Continue'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setStep('credentials'); setMpin(''); setMpinConfirm(''); setError('') }}
+                  className="flex items-center justify-center gap-1 w-full text-gray-400 hover:text-gray-600 text-sm transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Back
+                </button>
+              </form>
+            )}
+
+            {/* Forgot MPIN step */}
+            {step === 'forgot-mpin' && (
+              <div className="space-y-5">
+                {!resetOtpSent ? (
+                  <>
+                    <p className="text-sm text-gray-600 text-center">
+                      An OTP will be sent to <span className="font-medium text-gray-800">{maskEmail(email)}</span>. Use it to reset your MPIN.
+                    </p>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={handleSendResetOtp}
+                      className={`w-full ${cfg.btn} text-white font-semibold py-2.5 rounded-xl transition-all text-sm shadow-sm`}
+                    >
+                      {loading
+                        ? <span className="flex items-center justify-center gap-2"><Spinner />Sending…</span>
+                        : 'Send OTP to Email'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setStep('mpin'); setError('') }}
+                      className="flex items-center justify-center gap-1 w-full text-gray-400 hover:text-gray-600 text-sm transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Back to MPIN
+                    </button>
+                  </>
+                ) : (
+                  <form onSubmit={handleResetMpin} className="space-y-5">
+                    {devOtp && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 text-center">
+                        <span className="font-semibold">Dev OTP: </span>
+                        <span className="font-mono tracking-widest text-base">{devOtp}</span>
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide text-center">Enter OTP</p>
+                      <PinBoxes value={resetOtp} onChange={setResetOtp} ring={cfg.ring} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide text-center">New MPIN</p>
+                      <PinBoxes value={resetMpin} onChange={setResetMpin} ring={cfg.ring} masked />
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide text-center">Confirm New MPIN</p>
+                      <PinBoxes value={resetMpinConfirm} onChange={setResetMpinConfirm} ring={cfg.ring} masked />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading || resetOtp.length < 6 || resetMpin.length < 6 || resetMpinConfirm.length < 6}
+                      className={`w-full ${cfg.btn} text-white font-semibold py-2.5 rounded-xl transition-all text-sm shadow-sm`}
+                    >
+                      {loading
+                        ? <span className="flex items-center justify-center gap-2"><Spinner />Resetting…</span>
+                        : 'Reset MPIN & Continue'}
+                    </button>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <button
+                        type="button"
+                        onClick={() => { setStep('mpin'); setResetOtpSent(false); setDevOtp(''); setError('') }}
+                        className="flex items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={handleSendResetOtp}
+                        className="text-gray-400 hover:text-gray-600 font-medium transition-colors disabled:text-gray-300"
+                      >
+                        Resend OTP
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             )}
 
             {/* Forgot password step */}

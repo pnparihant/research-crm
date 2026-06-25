@@ -19,6 +19,7 @@ export interface IUser extends Document {
   phone?: string | null;
   resetToken?: string | null;
   resetTokenExpiry?: Date | null;
+  mpin?: string | null;
   loginOtp?: string | null;
   loginOtpExpiry?: Date | null;
   createdAt: Date;
@@ -47,6 +48,7 @@ const UserSchema = new Schema<IUser>(
     phone: { type: String, default: null },
     resetToken: { type: String, default: null },
     resetTokenExpiry: { type: Date, default: null },
+    mpin: { type: String, default: null },
     loginOtp: { type: String, default: null },
     loginOtpExpiry: { type: Date, default: null },
   },
