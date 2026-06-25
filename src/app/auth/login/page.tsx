@@ -149,6 +149,7 @@ function OtpBoxes({ value, onChange, ring }: { value: string; onChange: (v: stri
 
 export default function LoginPage() {
   const router = useRouter()
+  const submittingRef = useRef(false)
   const [activeTab, setActiveTab] = useState<LoginTab>('client')
   const [step, setStep] = useState<Step>('credentials')
   const [email, setEmail] = useState('')
@@ -196,29 +197,36 @@ export default function LoginPage() {
 
   async function handleCredentials(e: React.FormEvent) {
     e.preventDefault()
+    // Ref guard prevents double-submission even if button re-renders enabled
+    if (submittingRef.current) return
+    submittingRef.current = true
     setError('')
     setLoading(true)
 
-    const fullEmail = email.includes('@') ? email : email + EMAIL_DOMAIN
-    const result = await signIn('credentials', { email: fullEmail, password, redirect: false })
-    setLoading(false)
-    if (result?.error) {
-      // NextAuth encodes thrown Error messages as the error value
-      const msg = result.error === 'CredentialsSignin' ? 'Invalid email or password' : result.error;
-      setError(msg);
-      return;
+    try {
+      const fullEmail = email.includes('@') ? email : email + EMAIL_DOMAIN
+      const result = await signIn('credentials', { email: fullEmail, password, redirect: false })
+      if (result?.error) {
+        const msg = result.error === 'CredentialsSignin' ? 'Invalid email or password' : result.error
+        setError(msg)
+        setLoading(false)
+        return
+      }
+
+      const session = await fetch('/api/auth/session').then((r) => r.json())
+      const role: string = session?.user?.role ?? 'user'
+      if (!TAB_CONFIG[activeTab].expectedRoles.includes(role)) {
+        setError('This account does not have access to this login')
+        setLoading(false)
+        return
+      }
+
+      setEmail(fullEmail)
+      // Keep loading=true through sendEmailOtp — no gap where button is re-enabled
+      await sendEmailOtp(fullEmail)
+    } finally {
+      submittingRef.current = false
     }
-
-    const session = await fetch('/api/auth/session').then((r) => r.json())
-    const role: string = session?.user?.role ?? 'user'
-
-    if (!TAB_CONFIG[activeTab].expectedRoles.includes(role)) {
-      setError('This account does not have access to this login')
-      return
-    }
-
-    setEmail(fullEmail)
-    await sendEmailOtp(fullEmail)
   }
 
   async function sendEmailOtp(emailOverride?: string) {
