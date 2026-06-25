@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       console.log(`[send-login-otp] New OTP stored for ${user.email} (expiry: ${midnightUTC.toISOString()})`);
     } else {
       // Another request already stored a valid OTP — reuse it
-      const fresh = await User.findById(user._id).lean();
+      const fresh = await User.findOne({ _id: user._id }).select("loginOtp loginOtpExpiry");
       otp = fresh!.loginOtp as string;
       expiry = fresh!.loginOtpExpiry as Date;
       console.log(`[send-login-otp] Reusing existing OTP for ${user.email} (expiry: ${expiry.toISOString()})`);
