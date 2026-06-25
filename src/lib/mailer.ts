@@ -19,7 +19,7 @@ export async function sendLoginOtpEmail(to: string, otp: string) {
     from: `"${process.env.SMTP_FROM_NAME ?? "Arihant Capital Markets"}" <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
     to,
     subject: "Your OTP for Arihant Capital Markets Research Servicing Tracker",
-    text: `Your OTP for Arihant Capital Markets Research Servicing Tracker login is ${otp}. Valid for 10 minutes. Do not share this OTP with anyone. - ARIHANT`,
+    text: `Your OTP for Arihant Capital Markets Research Servicing Tracker login is ${otp}. Valid till midnight today (IST). Do not share this OTP with anyone. - ARIHANT`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:12px;">
         <div style="text-align:center;margin-bottom:24px;">
@@ -30,7 +30,7 @@ export async function sendLoginOtpEmail(to: string, otp: string) {
         <div style="text-align:center;margin:24px 0;">
           <span style="font-size:36px;font-weight:bold;letter-spacing:12px;color:#1e3a5f;font-family:monospace;">${otp}</span>
         </div>
-        <p style="color:#6b7280;font-size:13px;">Valid for <strong>10 minutes</strong>. Do not share this OTP with anyone.</p>
+        <p style="color:#6b7280;font-size:13px;">Valid till <strong>midnight today (IST)</strong>. Do not share this OTP with anyone.</p>
         <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
         <p style="color:#9ca3af;font-size:11px;text-align:center;">— ARIHANT</p>
       </div>

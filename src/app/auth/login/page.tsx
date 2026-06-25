@@ -312,7 +312,7 @@ export default function LoginPage() {
                     OTP sent to <span className="font-medium text-gray-700">{maskEmail(email)}</span>
                   </p>
                   <p className="text-xs text-teal-700 mt-2 bg-teal-50 border border-teal-100 rounded-lg px-3 py-1.5 inline-block">
-                    Valid for 10 minutes · Do not share
+                    Valid till midnight (IST) · Do not share
                   </p>
                 </>
               ) : step === 'forgot' ? (

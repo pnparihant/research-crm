@@ -21,14 +21,29 @@ export async function POST(req: NextRequest) {
   const isTestAccount = TEST_EMAILS.includes(user.email);
   console.log(`[admin/auth/send-login-otp] email=${user.email} role=${user.role} isTestAccount=${isTestAccount}`);
 
-  const otp = isTestAccount ? "000000" : crypto.randomInt(100000, 999999).toString();
-  const expiry = new Date(Date.now() + 10 * 60 * 1000);
+  // One OTP per calendar day (IST): reuse if a valid one already exists
+  const now = new Date();
+  let otp: string;
+  let expiry: Date;
 
-  await User.updateOne(
-    { _id: user._id },
-    { $set: { loginOtp: otp, loginOtpExpiry: expiry } }
-  );
-  console.log(`[admin/auth/send-login-otp] OTP stored in DB for ${user.email} (expiry: ${expiry.toISOString()})`);
+  if (!isTestAccount && user.loginOtp && user.loginOtpExpiry && user.loginOtpExpiry > now) {
+    otp = user.loginOtp;
+    expiry = user.loginOtpExpiry;
+    console.log(`[admin/auth/send-login-otp] Reusing existing OTP for ${user.email} (expiry: ${expiry.toISOString()})`);
+  } else {
+    otp = isTestAccount ? "000000" : crypto.randomInt(100000, 999999).toString();
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const nowIST = new Date(now.getTime() + IST_OFFSET_MS);
+    nowIST.setUTCHours(0, 0, 0, 0);
+    nowIST.setUTCDate(nowIST.getUTCDate() + 1);
+    expiry = new Date(nowIST.getTime() - IST_OFFSET_MS);
+
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { loginOtp: otp, loginOtpExpiry: expiry } }
+    );
+    console.log(`[admin/auth/send-login-otp] New OTP stored for ${user.email} (expiry: ${expiry.toISOString()})`);
+  }
 
   if (isTestAccount) {
     console.log(`[admin/auth/send-login-otp] Test account — skipping email/SMS, magic OTP=000000`);

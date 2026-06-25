@@ -58,13 +58,23 @@ function validateRow(row: Omit<Row, "_errors">, _clients: ClientItem[], stocks: 
 }
 
 /** Returns today's date in DD-MM-YYYY format (IST). */
-function todayISTLabel(): string {
-  return new Date().toLocaleDateString("en-IN", {
+function istDateLabel(date: Date): string {
+  return date.toLocaleDateString("en-IN", {
     timeZone: "Asia/Kolkata",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-  }).replace(/\//g, "-"); // e.g. "23-06-2026"
+  }).replace(/\//g, "-");
+}
+
+function todayISTLabel(): string {
+  return istDateLabel(new Date());
+}
+
+function yesterdayISTLabel(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return istDateLabel(d);
 }
 
 async function downloadTemplate() {
@@ -114,8 +124,10 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
     }
     const fileDate = dateMatch[1];
     const today = todayISTLabel();
-    if (fileDate !== today) {
-      const msg = `Date mismatch — this sheet is for ${fileDate}, but today is ${today}. Please download today's sheet.`;
+    const yesterday = yesterdayISTLabel();
+    // T+1 validity: accept today's or yesterday's sheet
+    if (fileDate !== today && fileDate !== yesterday) {
+      const msg = `Date mismatch — this sheet is for ${fileDate}. You can only upload today's or yesterday's sheet.`;
       setSheetError(msg);
       toast(msg, "error");
       setRows([]);

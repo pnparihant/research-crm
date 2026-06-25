@@ -5,8 +5,8 @@ import { FormSubmission } from "@/models/FormSubmission";
 import { logAction } from "@/lib/auditLog";
 import { verifyTemplateSignature } from "@/lib/templateGenerator";
 
-function todayISTLabel(): string {
-  return new Date()
+function istDateLabel(date: Date): string {
+  return date
     .toLocaleDateString("en-IN", {
       timeZone: "Asia/Kolkata",
       day: "2-digit",
@@ -14,6 +14,16 @@ function todayISTLabel(): string {
       year: "numeric",
     })
     .replace(/\//g, "-"); // "DD-MM-YYYY"
+}
+
+function todayISTLabel(): string {
+  return istDateLabel(new Date());
+}
+
+function yesterdayISTLabel(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return istDateLabel(d);
 }
 
 export async function POST(req: NextRequest) {
@@ -58,13 +68,15 @@ export async function POST(req: NextRequest) {
     }
 
     const fileDate = dateMatch[1];
-    if (fileDate !== today) {
+    const yesterday = yesterdayISTLabel();
+    // T+1 validity: accept today's template or yesterday's (uploaded the next day)
+    if (fileDate !== today && fileDate !== yesterday) {
       const details = `User=${token.email} uploaded template for ${fileDate} but today is ${today}. File="${filename}"`;
       console.log(`[forms/bulk] POST FAIL — date mismatch, user=${token.email}, fileDate=${fileDate}, today=${today}`);
       await connectDB();
       await logAction(req, token, "BULK_UPLOAD_DATE_MISMATCH", details);
       return NextResponse.json(
-        { error: `Date mismatch — this sheet is for ${fileDate}, but today is ${today}. Please download today's sheet.` },
+        { error: `Date mismatch — this sheet is for ${fileDate}. You can only upload today's or yesterday's sheet.` },
         { status: 400 }
       );
     }
@@ -81,7 +93,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const isValid = verifyTemplateSignature(token.id as string, today, signature);
+    // Verify against the file's own date (signature was generated with that date)
+    const isValid = verifyTemplateSignature(token.id as string, fileDate, signature);
     if (!isValid) {
       const details = `User=${token.email} uploaded a tampered or reused sheet. Signature mismatch. File="${filename}"`;
       console.log(`[forms/bulk] POST FAIL — signature mismatch (tampered file), user=${token.email}`);
