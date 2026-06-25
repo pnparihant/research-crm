@@ -1,0 +1,202 @@
+"use client";
+import { useState, useEffect, useRef, useCallback } from "react";
+
+interface Report {
+  _id: string;
+  filename: string;
+  size: number;
+  uploadedAt: string;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default function UploadReports() {
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchReports = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/reports");
+      if (!res.ok) throw new Error("Failed to load reports");
+      setReports(await res.json());
+    } catch {
+      setError("Failed to load your reports.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchReports(); }, [fetchReports]);
+
+  async function uploadFile(file: File) {
+    setError(null);
+    setSuccess(null);
+
+    if (file.type !== "application/pdf") {
+      setError("Only PDF files are allowed.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("File exceeds the 10 MB limit.");
+      return;
+    }
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/reports", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Upload failed."); return; }
+      setSuccess(`"${file.name}" uploaded successfully.`);
+      await fetchReports();
+    } catch {
+      setError("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) uploadFile(file);
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-teal-700 rounded-2xl px-8 py-6 text-white">
+        <p className="text-sm font-medium text-teal-200 uppercase tracking-widest mb-1">Arihant Capital Markets</p>
+        <h1 className="text-2xl font-bold">Upload Reports</h1>
+        <p className="text-teal-100 text-sm mt-1">Upload PDF reports — no expiry, accessible any time</p>
+      </div>
+
+      {/* Upload area */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Upload a PDF</p>
+
+        <div
+          className={`relative border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors ${
+            dragging ? "border-teal-500 bg-teal-50" : "border-gray-200 hover:border-teal-400 hover:bg-gray-50"
+          }`}
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+        >
+          <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <div className="text-center">
+            <p className="font-semibold text-gray-700">
+              {uploading ? "Uploading…" : "Click to upload or drag & drop"}
+            </p>
+            <p className="text-sm text-gray-400 mt-1">PDF files only · max 10 MB</p>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
+            onChange={onFileChange}
+            disabled={uploading}
+          />
+        </div>
+
+        {uploading && (
+          <div className="flex items-center gap-2 text-teal-700 text-sm">
+            <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+            Uploading your report…
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-4 py-3 text-red-700 text-sm">
+            <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="flex items-center gap-2 bg-teal-50 border border-teal-100 rounded-lg px-4 py-3 text-teal-700 text-sm">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {success}
+          </div>
+        )}
+      </div>
+
+      {/* History */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-4">Uploaded Reports</p>
+
+        {loading ? (
+          <p className="text-sm text-gray-400 py-6 text-center">Loading…</p>
+        ) : reports.length === 0 ? (
+          <p className="text-sm text-gray-400 py-6 text-center">No reports uploaded yet.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {reports.map((r) => (
+              <div key={r._id} className="flex items-center justify-between py-3 gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
+                    <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{r.filename}</p>
+                    <p className="text-xs text-gray-400">{formatBytes(r.size)} · {formatDate(r.uploadedAt)}</p>
+                  </div>
+                </div>
+                <a
+                  href={`/api/reports/${r._id}`}
+                  download={r.filename}
+                  className="shrink-0 text-xs text-teal-600 hover:text-teal-800 font-medium px-3 py-1.5 rounded-lg border border-teal-200 hover:bg-teal-50 transition-colors"
+                >
+                  Download
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

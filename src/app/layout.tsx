@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ToastProvider } from "@/components/ui/Toast";
-
-const inter = Inter({ subsets: ["latin"], preload: false });
 
 export const metadata: Metadata = {
   title: "ArihantCRM - Research CRM",
@@ -18,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-50 min-h-screen`}>
+      <body className="font-sans bg-gray-50 min-h-screen" style={{ fontFamily: "'Inter', sans-serif" }}>
         <AuthProvider><ToastProvider>{children}</ToastProvider></AuthProvider>
       </body>
     </html>

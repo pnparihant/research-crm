@@ -3,13 +3,14 @@ import { useState } from "react";
 import { Session } from "next-auth";
 import { signOut } from "next-auth/react";
 import AdminSubmissionsTable from "./AdminSubmissionsTable";
+import AdminReports from "./AdminReports";
 import AssignClients from "./AssignClients";
 import ManageClients from "./ManageClients";
 import ChangePassword from "@/components/ChangePassword";
 import FillForm from "@/components/FillForm";
 import BulkUpload from "@/components/BulkUpload";
 
-type Tab = "submissions" | "fill" | "bulk" | "clients" | "users" | "security";
+type Tab = "submissions" | "fill" | "bulk" | "clients" | "users" | "reports" | "security";
 
 export default function AdminDashboard({ session }: { session: Session }) {
   const [tab, setTab] = useState<Tab>("submissions");
@@ -57,6 +58,15 @@ export default function AdminDashboard({ session }: { session: Session }) {
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      ),
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
     },
@@ -124,6 +134,7 @@ export default function AdminDashboard({ session }: { session: Session }) {
         {tab === "bulk"        && <BulkUpload onSubmitted={() => setTab("submissions")} userName={session.user.name ?? ""} />}
         {tab === "clients"     && <ManageClients />}
         {tab === "users"       && <AssignClients />}
+        {tab === "reports"     && <AdminReports />}
         {tab === "security"    && <ChangePassword accentColor="indigo" />}
       </main>
     </div>

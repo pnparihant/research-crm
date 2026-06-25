@@ -1,71 +1,128 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/ui/Toast";
 
-const CATEGORIES = [
-  "Mutual Fund",
-  "PMS",
-  "AIF",
-  "Domestic Financial Institution",
-  "Insurance",
+// Cycles through a fixed palette for any number of dynamic categories
+const COLOR_PALETTE = [
+  "bg-blue-50 text-blue-700 border-blue-200",
+  "bg-purple-50 text-purple-700 border-purple-200",
+  "bg-amber-50 text-amber-700 border-amber-200",
+  "bg-teal-50 text-teal-700 border-teal-200",
+  "bg-rose-50 text-rose-700 border-rose-200",
+  "bg-green-50 text-green-700 border-green-200",
+  "bg-orange-50 text-orange-700 border-orange-200",
+  "bg-sky-50 text-sky-700 border-sky-200",
 ];
 
-const CATEGORY_COLORS: Record<string, string> = {
-  "Mutual Fund":                   "bg-blue-50 text-blue-700 border-blue-200",
-  "PMS":                           "bg-purple-50 text-purple-700 border-purple-200",
-  "AIF":                           "bg-amber-50 text-amber-700 border-amber-200",
-  "Domestic Financial Institution": "bg-teal-50 text-teal-700 border-teal-200",
-  "Insurance":                     "bg-rose-50 text-rose-700 border-rose-200",
-};
-
-interface ClientDoc {
-  _id: string;
-  name: string;
-  category: string;
-}
+interface ClientDoc  { _id: string; name: string; category: string }
+interface CategoryDoc { _id: string; name: string }
 
 export default function ManageClients() {
   const { toast } = useToast();
-  const [clients, setClients] = useState<ClientDoc[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [filterCat, setFilterCat] = useState<string>("all");
 
-  // Add form
-  const [showAdd, setShowAdd] = useState(false);
-  const [addName, setAddName] = useState("");
-  const [addCategory, setAddCategory] = useState(CATEGORIES[0]);
-  const [addSaving, setAddSaving] = useState(false);
+  const [categories, setCategories] = useState<CategoryDoc[]>([]);
+  const [clients, setClients]       = useState<ClientDoc[]>([]);
+  const [loading, setLoading]        = useState(true);
+  const [search, setSearch]          = useState("");
+  const [filterCat, setFilterCat]    = useState<string>("all");
+
+  // Category management panel
+  const [showCatPanel, setShowCatPanel] = useState(false);
+  const [newCatName, setNewCatName]     = useState("");
+  const [addingCat, setAddingCat]       = useState(false);
+  const [deletingCatId, setDeletingCatId] = useState<string | null>(null);
+
+  // Add client form
+  const [showAdd, setShowAdd]   = useState(false);
+  const [addName, setAddName]   = useState("");
+  const [addCategory, setAddCategory] = useState("");
+  const [addSaving, setAddSaving]     = useState(false);
 
   // Edit modal
-  const [editTarget, setEditTarget] = useState<ClientDoc | null>(null);
-  const [editName, setEditName] = useState("");
+  const [editTarget, setEditTarget]     = useState<ClientDoc | null>(null);
+  const [editName, setEditName]         = useState("");
   const [editCategory, setEditCategory] = useState("");
-  const [editSaving, setEditSaving] = useState(false);
+  const [editSaving, setEditSaving]     = useState(false);
 
-  // Delete
+  // Delete client
   const [deleteTarget, setDeleteTarget] = useState<ClientDoc | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [deleting, setDeleting]         = useState(false);
 
-  useEffect(() => {
-    fetch("/api/master/clients")
-      .then((r) => r.json())
-      .then((data) => { setClients(Array.isArray(data) ? data : []); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, []);
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [catRes, clientRes] = await Promise.all([
+        fetch("/api/master/client-categories"),
+        fetch("/api/master/clients"),
+      ]);
+      const cats    = catRes.ok    ? await catRes.json()    : [];
+      const clients = clientRes.ok ? await clientRes.json() : [];
+      setCategories(Array.isArray(cats)    ? cats    : []);
+      setClients(Array.isArray(clients) ? clients : []);
+      if (Array.isArray(cats) && cats.length > 0 && !addCategory) {
+        setAddCategory(cats[0].name);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [addCategory]);
 
-  const grouped = CATEGORIES.reduce<Record<string, ClientDoc[]>>((acc, cat) => {
+  useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Derived color map
+  const colorMap: Record<string, string> = {};
+  categories.forEach((c, i) => { colorMap[c.name] = COLOR_PALETTE[i % COLOR_PALETTE.length]; });
+
+  const catNames = categories.map((c) => c.name);
+
+  const grouped: Record<string, ClientDoc[]> = {};
+  catNames.forEach((cat) => {
     const q = search.toLowerCase();
-    acc[cat] = clients.filter(
+    grouped[cat] = clients.filter(
       (c) => c.category === cat && (!q || c.name.toLowerCase().includes(q))
     );
-    return acc;
-  }, {});
+  });
 
-  const displayCategories = filterCat === "all"
-    ? CATEGORIES.filter((cat) => grouped[cat].length > 0 || !search)
-    : [filterCat];
+  // Clients with unknown / deleted categories
+  const knownCats = new Set(catNames);
+  const orphans = clients.filter((c) => !knownCats.has(c.category) && (!search || c.name.toLowerCase().includes(search.toLowerCase())));
 
+  const displayCats = filterCat === "all" ? catNames : [filterCat];
+  const totalVisible = displayCats.reduce((n, cat) => n + (grouped[cat]?.length ?? 0), 0) + (filterCat === "all" ? orphans.length : 0);
+
+  // ── Category management ───────────────────────────────────────────────────
+  async function handleAddCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+    setAddingCat(true);
+    const res = await fetch("/api/master/client-categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newCatName.trim() }),
+    });
+    const data = await res.json();
+    setAddingCat(false);
+    if (!res.ok) { toast(data.error ?? "Failed to add category", "error"); return; }
+    setCategories((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    setNewCatName("");
+    toast(`Category "${data.name}" added`, "success");
+  }
+
+  async function handleDeleteCategory(cat: CategoryDoc) {
+    const clientsInCat = clients.filter((c) => c.category === cat.name).length;
+    if (clientsInCat > 0) {
+      toast(`Cannot delete — ${clientsInCat} client(s) are in this category`, "error");
+      return;
+    }
+    if (!confirm(`Delete category "${cat.name}"?`)) return;
+    setDeletingCatId(cat._id);
+    await fetch(`/api/master/client-categories?id=${cat._id}`, { method: "DELETE" });
+    setCategories((prev) => prev.filter((c) => c._id !== cat._id));
+    setDeletingCatId(null);
+    toast(`Category "${cat.name}" deleted`, "warning");
+  }
+
+  // ── Client CRUD ───────────────────────────────────────────────────────────
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setAddSaving(true);
@@ -100,7 +157,7 @@ export default function ManageClients() {
     });
     const data = await res.json();
     setEditSaving(false);
-    if (!res.ok) { toast(data.error ?? "Failed to update client", "error"); return; }
+    if (!res.ok) { toast(data.error ?? "Failed to update", "error"); return; }
     setClients((prev) =>
       prev.map((c) => c._id === editTarget._id ? data : c)
         .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name))
@@ -120,8 +177,7 @@ export default function ManageClients() {
     setDeleteTarget(null);
   }
 
-  const totalVisible = displayCategories.reduce((n, cat) => n + grouped[cat].length, 0);
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
       {/* Edit modal */}
@@ -144,7 +200,7 @@ export default function ManageClients() {
                   onChange={(e) => setEditCategory(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none bg-white"
                 >
-                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                  {catNames.map((c) => <option key={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -156,9 +212,7 @@ export default function ManageClients() {
                 />
               </div>
               <div className="flex gap-3 pt-1 justify-end">
-                <button type="button" onClick={() => setEditTarget(null)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                  Cancel
-                </button>
+                <button type="button" onClick={() => setEditTarget(null)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">Cancel</button>
                 <button type="submit" disabled={editSaving} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors">
                   {editSaving ? "Saving…" : "Save Changes"}
                 </button>
@@ -168,7 +222,7 @@ export default function ManageClients() {
         </div>
       )}
 
-      {/* Delete confirmation */}
+      {/* Delete client confirmation */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
@@ -202,18 +256,82 @@ export default function ManageClients() {
               <h2 className="text-xl font-semibold text-gray-900">Manage Clients</h2>
               <p className="text-sm text-gray-500 mt-0.5">Add, edit or remove institutional clients grouped by category.</p>
             </div>
-            <button
-              onClick={() => { setShowAdd((v) => !v); setAddName(""); setAddCategory(CATEGORIES[0]); }}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors shrink-0"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Client
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setShowCatPanel((v) => !v)}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
+                </svg>
+                Manage Categories
+              </button>
+              <button
+                onClick={() => { setShowAdd((v) => !v); setAddName(""); setAddCategory(catNames[0] ?? ""); }}
+                disabled={catNames.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Client
+              </button>
+            </div>
           </div>
 
-          {/* Add form */}
+          {/* Manage Categories panel */}
+          {showCatPanel && (
+            <div className="mb-4 p-5 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
+              <h3 className="text-sm font-semibold text-gray-700">Categories</h3>
+
+              {/* Existing categories */}
+              {categories.length === 0 ? (
+                <p className="text-sm text-gray-400">No categories yet. Add one below.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {categories.map((cat, i) => (
+                    <li key={cat._id} className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${COLOR_PALETTE[i % COLOR_PALETTE.length]}`}>
+                          {cat.name}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {clients.filter((c) => c.category === cat.name).length} clients
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteCategory(cat)}
+                        disabled={deletingCatId === cat._id}
+                        className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-50"
+                      >
+                        {deletingCatId === cat._id ? "Deleting…" : "Delete"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Add new category */}
+              <form onSubmit={handleAddCategory} className="flex gap-2 pt-1">
+                <input
+                  type="text"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  placeholder="New category name"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  type="submit"
+                  disabled={addingCat || !newCatName.trim()}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  {addingCat ? "Adding…" : "Add"}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* Add client form */}
           {showAdd && (
             <form onSubmit={handleAdd} className="mt-2 p-5 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
               <h3 className="text-sm font-semibold text-gray-700">New Client</h3>
@@ -225,7 +343,7 @@ export default function ManageClients() {
                     onChange={(e) => setAddCategory(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none bg-white"
                   >
-                    {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                    {catNames.map((c) => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
@@ -242,14 +360,12 @@ export default function ManageClients() {
                 <button type="submit" disabled={addSaving} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors">
                   {addSaving ? "Adding…" : "Add Client"}
                 </button>
-                <button type="button" onClick={() => setShowAdd(false)} className="px-5 py-2 text-gray-500 hover:text-gray-700 text-sm font-medium">
-                  Cancel
-                </button>
+                <button type="button" onClick={() => setShowAdd(false)} className="px-5 py-2 text-gray-500 hover:text-gray-700 text-sm font-medium">Cancel</button>
               </div>
             </form>
           )}
 
-          {/* Search + category filter */}
+          {/* Search + filter */}
           <div className="flex flex-col sm:flex-row gap-3 mt-4">
             <div className="relative flex-1">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -267,60 +383,77 @@ export default function ManageClients() {
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none bg-white"
             >
               <option value="all">All Categories</option>
-              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {catNames.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
         </div>
 
-        {/* Client list grouped by category */}
+        {/* Client list */}
         {loading ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-400 text-sm">Loading…</div>
+        ) : catNames.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-400 text-sm">
+            No categories yet. Click <strong>Manage Categories</strong> to add one.
+          </div>
         ) : totalVisible === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-400 text-sm">
             {search ? `No clients match "${search}"` : "No clients yet. Add one above."}
           </div>
         ) : (
-          displayCategories.map((cat) => {
-            const list = grouped[cat];
-            if (list.length === 0 && search) return null;
-            const colorCls = CATEGORY_COLORS[cat] ?? "bg-gray-50 text-gray-600 border-gray-200";
-            return (
-              <div key={cat} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+          <>
+            {displayCats.map((cat, i) => {
+              const list = grouped[cat] ?? [];
+              if (list.length === 0 && search) return null;
+              const colorCls = COLOR_PALETTE[categories.findIndex((c) => c.name === cat) % COLOR_PALETTE.length] ?? "bg-gray-50 text-gray-600 border-gray-200";
+              return (
+                <div key={cat} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-3">
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${colorCls}`}>{cat}</span>
                     <span className="text-xs text-gray-400">{list.length} {list.length === 1 ? "client" : "clients"}</span>
                   </div>
+                  {list.length === 0 ? (
+                    <p className="px-5 py-4 text-sm text-gray-400">No clients in this category yet.</p>
+                  ) : (
+                    <ul className="divide-y divide-gray-50">
+                      {list.map((c) => (
+                        <li key={c._id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors group">
+                          <span className="text-sm text-gray-800 font-medium">{c.name}</span>
+                          <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => openEdit(c)} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium">Edit</button>
+                            <button onClick={() => setDeleteTarget(c)} className="text-xs text-red-400 hover:text-red-600 font-medium">Delete</button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
+              );
+            })}
 
-                {list.length === 0 ? (
-                  <p className="px-5 py-4 text-sm text-gray-400">No clients in this category yet.</p>
-                ) : (
-                  <ul className="divide-y divide-gray-50">
-                    {list.map((c) => (
-                      <li key={c._id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors group">
+            {/* Orphaned clients (category was deleted) */}
+            {filterCat === "all" && orphans.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-amber-200 overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-amber-100 flex items-center gap-3">
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full border bg-amber-50 text-amber-700 border-amber-200">Uncategorised</span>
+                  <span className="text-xs text-gray-400">{orphans.length} clients</span>
+                </div>
+                <ul className="divide-y divide-gray-50">
+                  {orphans.map((c) => (
+                    <li key={c._id} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors group">
+                      <div>
                         <span className="text-sm text-gray-800 font-medium">{c.name}</span>
-                        <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => openEdit(c)}
-                            className="text-xs text-indigo-500 hover:text-indigo-700 font-medium"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(c)}
-                            className="text-xs text-red-400 hover:text-red-600 font-medium"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                        <span className="ml-2 text-xs text-gray-400">({c.category})</span>
+                      </div>
+                      <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openEdit(c)} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium">Edit</button>
+                        <button onClick={() => setDeleteTarget(c)} className="text-xs text-red-400 hover:text-red-600 font-medium">Delete</button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            );
-          })
+            )}
+          </>
         )}
       </div>
     </>

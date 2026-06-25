@@ -24,6 +24,11 @@ export interface ISalesExecutive extends Document { name: string }
 const SalesExecutiveSchema = new Schema<ISalesExecutive>({ name: { type: String, required: true, unique: true, trim: true } }, { timestamps: true });
 export const SalesExecutive = mongoose.models.SalesExecutive ?? mongoose.model<ISalesExecutive>("SalesExecutive", SalesExecutiveSchema);
 
+// ── Client Category ──────────────────────────────────────────────────────────
+export interface IClientCategory extends Document { name: string }
+const ClientCategorySchema = new Schema<IClientCategory>({ name: { type: String, required: true, unique: true, trim: true } }, { timestamps: true });
+export const ClientCategory = mongoose.models.ClientCategory ?? mongoose.model<IClientCategory>("ClientCategory", ClientCategorySchema);
+
 // ── Client (Arihant's institutional clients / counterparties) ─────────────────
 export interface IClient extends Document { code?: string; name: string; category: string }
 const ClientSchema = new Schema<IClient>({

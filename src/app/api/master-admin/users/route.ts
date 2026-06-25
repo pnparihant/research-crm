@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import type { JWT } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { logAction } from "@/lib/auditLog";
 
-function requireMasterAdmin(token: Awaited<ReturnType<typeof getToken>>, label: string) {
+function requireMasterAdmin(token: JWT | null, label: string) {
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (token.role !== "master_admin") {
     console.log(`[master-admin/users] ${label} FAIL — forbidden, role=${token.role}`);

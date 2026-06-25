@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import type { JWT } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { Client } from "@/models/MasterData";
 
-function requireAdminOrAbove(token: Awaited<ReturnType<typeof getToken>>) {
+function requireAdminOrAbove(token: JWT | null) {
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (token.role !== "admin" && token.role !== "master_admin")
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
