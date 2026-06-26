@@ -251,7 +251,7 @@ export default function ManageClients() {
       <div className="space-y-5 max-w-4xl">
         {/* Header card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">Manage Clients</h2>
               <p className="text-sm text-gray-500 mt-0.5">Add, edit or remove institutional clients grouped by category.</p>
@@ -259,19 +259,19 @@ export default function ManageClients() {
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => setShowCatPanel((v) => !v)}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
                 </svg>
-                Manage Categories
+                <span className="hidden xs:inline">Manage </span>Categories
               </button>
               <button
                 onClick={() => { setShowAdd((v) => !v); setAddName(""); setAddCategory(catNames[0] ?? ""); }}
                 disabled={catNames.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-sm font-medium rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-sm font-medium rounded-lg transition-colors"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Add Client
