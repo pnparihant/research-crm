@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
-import type { JWT } from "next-auth/jwt";
+import { auth } from "@/auth";
 
 export async function POST(req: NextRequest) {
-  const token = await getToken({ req }) as JWT | null;
-  if (!token?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await auth();
+  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { otp, mpin } = await req.json();
   if (!otp || !mpin) return NextResponse.json({ error: "OTP and new MPIN required" }, { status: 400 });
   if (!/^\d{6}$/.test(mpin)) return NextResponse.json({ error: "MPIN must be 6 digits" }, { status: 400 });
 
   await connectDB();
-  const user = await User.findOne({ email: token.email }).select("loginOtp loginOtpExpiry");
+  const user = await User.findOne({ email: session.user.email }).select("loginOtp loginOtpExpiry");
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   if (!user.loginOtp || !user.loginOtpExpiry) {

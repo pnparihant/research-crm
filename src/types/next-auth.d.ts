@@ -1,5 +1,4 @@
-import "next-auth";
-import "next-auth/jwt";
+import { DefaultSession } from "next-auth";
 
 declare module "next-auth" {
   interface User {
@@ -16,7 +15,7 @@ declare module "next-auth" {
       role: "user" | "admin" | "master_admin";
       twoFactorEnabled: boolean;
       twoFactorVerified: boolean;
-    };
+    } & DefaultSession["user"];
   }
 }
 

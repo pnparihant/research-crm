@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { logAction } from "@/lib/auditLog";
 import { maskEmail, maskPhone } from "@/lib/mask";
+import { auth } from "@/auth";
 
 export async function GET(req: NextRequest) {
   console.log("[master-admin/admins] GET — fetching all admins");
-  const token = await getToken({ req });
-  if (!token) {
+  const session = await auth();
+  if (!session?.user) {
     console.log("[master-admin/admins] GET FAIL — unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (token.role !== "master_admin") {
-    console.log(`[master-admin/admins] GET FAIL — forbidden, role=${token.role}`);
+  if (session.user.role !== "master_admin") {
+    console.log(`[master-admin/admins] GET FAIL — forbidden, role=${session.user.role}`);
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -27,13 +27,13 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   console.log("[master-admin/admins] PATCH — promote/demote");
-  const token = await getToken({ req });
-  if (!token) {
+  const session = await auth();
+  if (!session?.user) {
     console.log("[master-admin/admins] PATCH FAIL — unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (token.role !== "master_admin") {
-    console.log(`[master-admin/admins] PATCH FAIL — forbidden, role=${token.role}`);
+  if (session.user.role !== "master_admin") {
+    console.log(`[master-admin/admins] PATCH FAIL — forbidden, role=${session.user.role}`);
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -65,8 +65,8 @@ export async function PATCH(req: NextRequest) {
   user.role = action === "promote" ? "admin" : "user";
   await user.save();
 
-  console.log(`[master-admin/admins] PATCH — ${action}d user=${user.email} → role=${user.role} by master_admin=${token.email}`);
-  await logAction(req, token,
+  console.log(`[master-admin/admins] PATCH — ${action}d user=${user.email} → role=${user.role} by master_admin=${session.user.email}`);
+  await logAction(req, session,
     action === "promote" ? "PROMOTE_TO_ADMIN" : "DEMOTE_TO_USER",
     action === "promote"
       ? `Promoted ${user.name} (${user.email}) to Admin`
@@ -77,13 +77,13 @@ export async function PATCH(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   console.log("[master-admin/admins] POST — create admin");
-  const token = await getToken({ req });
-  if (!token) {
+  const session = await auth();
+  if (!session?.user) {
     console.log("[master-admin/admins] POST FAIL — unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (token.role !== "master_admin") {
-    console.log(`[master-admin/admins] POST FAIL — forbidden, role=${token.role}`);
+  if (session.user.role !== "master_admin") {
+    console.log(`[master-admin/admins] POST FAIL — forbidden, role=${session.user.role}`);
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
   const hashed = await bcrypt.hash(password, 12);
   const admin = await User.create({ name, email: email.toLowerCase(), password: hashed, role: "admin", phone: phone || null });
 
-  console.log(`[master-admin/admins] POST — created admin email=${email.toLowerCase()} by master_admin=${token.email}`);
-  await logAction(req, token, "CREATE_ADMIN", `Created admin: ${name} (${email.toLowerCase()})`);
+  console.log(`[master-admin/admins] POST — created admin email=${email.toLowerCase()} by master_admin=${session.user.email}`);
+  await logAction(req, session, "CREATE_ADMIN", `Created admin: ${name} (${email.toLowerCase()})`);
   return NextResponse.json({ _id: admin._id, name: admin.name, email: admin.email, role: admin.role }, { status: 201 });
 }

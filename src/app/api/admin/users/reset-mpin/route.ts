@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { logAction } from "@/lib/auditLog";
-import type { JWT } from "next-auth/jwt";
+import { auth } from "@/auth";
 
 export async function POST(req: NextRequest) {
-  const token = await getToken({ req }) as JWT | null;
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (token.role !== "admin" && token.role !== "master_admin") {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "admin" && session.user.role !== "master_admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -20,7 +19,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   await User.updateOne({ _id: userId }, { $set: { mpin: null } });
-  await logAction(req, token as never, "ADMIN_RESET_MPIN", `Reset MPIN for ${user.email}`);
+  await logAction(req, session as never, "ADMIN_RESET_MPIN", `Reset MPIN for ${user.email}`);
 
   return NextResponse.json({ success: true });
 }

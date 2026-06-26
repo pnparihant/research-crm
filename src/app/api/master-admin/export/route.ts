@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { FormSubmission } from "@/models/FormSubmission";
 import ExcelJS from "exceljs";
+import { auth } from "@/auth";
 
 let activeExports = 0;
 const MAX_CONCURRENT_EXPORTS = 2;
@@ -36,13 +36,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const token = await getToken({ req });
-  if (!token) {
+  const session = await auth();
+  if (!session?.user) {
     console.log("[master-admin/export] FAIL — unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (token.role !== "master_admin") {
-    console.log(`[master-admin/export] FAIL — forbidden, role=${token.role}`);
+  if (session.user.role !== "master_admin") {
+    console.log(`[master-admin/export] FAIL — forbidden, role=${session.user.role}`);
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

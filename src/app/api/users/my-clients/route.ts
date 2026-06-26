@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/auth";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import mongoose from "mongoose";
 
 export async function GET(req: NextRequest) {
   console.log("[users/my-clients] GET — fetching assigned clients");
-  const token = await getToken({ req });
-  if (!token) {
+  const session = await auth();
+  if (!session?.user) {
     console.log("[users/my-clients] GET FAIL — unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -16,11 +16,11 @@ export async function GET(req: NextRequest) {
 
   // Use native collection to bypass cached old-schema model
   const user = await User.collection.findOne(
-    { _id: new mongoose.Types.ObjectId(token.id as string) },
+    { _id: new mongoose.Types.ObjectId(session.user.id as string) },
     { projection: { assignedClients: 1 } }
   );
   if (!user) {
-    console.log(`[users/my-clients] GET FAIL — user not found, id=${token.id}`);
+    console.log(`[users/my-clients] GET FAIL — user not found, id=${session.user.id}`);
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   }).filter(Boolean);
 
   if (!clientIds.length) {
-    console.log(`[users/my-clients] GET — no assigned clients for user=${token.email}`);
+    console.log(`[users/my-clients] GET — no assigned clients for user=${session.user.email}`);
     return NextResponse.json([]);
   }
 
@@ -45,6 +45,6 @@ export async function GET(req: NextRequest) {
     { projection: { name: 1, code: 1 } }
   ).toArray();
 
-  console.log(`[users/my-clients] GET — returned ${clientDocs.length} clients for user=${token.email}`);
+  console.log(`[users/my-clients] GET — returned ${clientDocs.length} clients for user=${session.user.email}`);
   return NextResponse.json(clientDocs.map((c) => ({ _id: c._id.toString(), code: c.code, name: c.name })));
 }

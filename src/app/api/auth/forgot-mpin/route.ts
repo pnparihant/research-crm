@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import crypto from "crypto";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { sendLoginOtpEmail } from "@/lib/mailer";
-import type { JWT } from "next-auth/jwt";
+import { auth } from "@/auth";
 
 export async function POST(req: NextRequest) {
-  const token = await getToken({ req }) as JWT | null;
-  if (!token?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await auth();
+  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   await connectDB();
-  const user = await User.findOne({ email: token.email }).select("email name loginOtp loginOtpExpiry");
+  const user = await User.findOne({ email: session.user.email }).select("email name loginOtp loginOtpExpiry");
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const now = new Date();

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { FormSubmission } from "@/models/FormSubmission";
+import { auth } from "@/auth";
 
 export async function DELETE(
   req: NextRequest,
@@ -9,13 +9,13 @@ export async function DELETE(
 ) {
   const { id } = await params;
   console.log(`[admin/submissions/${id}] DELETE — requested by admin`);
-  const token = await getToken({ req });
-  if (!token) {
+  const session = await auth();
+  if (!session?.user) {
     console.log(`[admin/submissions/${id}] DELETE FAIL — unauthorized`);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (token.role !== "admin" && token.role !== "master_admin") {
-    console.log(`[admin/submissions/${id}] DELETE FAIL — forbidden, role=${token.role}`);
+  if (session.user.role !== "admin" && session.user.role !== "master_admin") {
+    console.log(`[admin/submissions/${id}] DELETE FAIL — forbidden, role=${session.user.role}`);
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -26,6 +26,6 @@ export async function DELETE(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  console.log(`[admin/submissions/${id}] DELETE — deleted by user=${token.email}`);
+  console.log(`[admin/submissions/${id}] DELETE — deleted by user=${session.user.email}`);
   return NextResponse.json({ success: true });
 }

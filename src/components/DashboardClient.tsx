@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Session } from "next-auth";
 import { signOut } from "next-auth/react";
 import FillForm from "./FillForm";
@@ -13,6 +13,14 @@ type Tab = "fill" | "bulk" | "history" | "reports" | "settings";
 export default function DashboardClient({ session }: { session: Session }) {
   const [activeTab, setActiveTab] = useState<Tab>("fill");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [designation, setDesignation] = useState("");
+
+  useEffect(() => {
+    fetch("/api/users/me")
+      .then((r) => r.json())
+      .then((data) => { if (data.designation) setDesignation(data.designation); })
+      .catch(() => {});
+  }, []);
 
   function onFormSubmitted() {
     setRefreshKey((k) => k + 1);
@@ -83,7 +91,8 @@ export default function DashboardClient({ session }: { session: Session }) {
             {/* Show Arihant Representative name prominently */}
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold text-gray-900">{session.user.name}</p>
-              <p className="text-xs text-teal-600 font-medium">Arihant Representative</p>
+              
+              {designation && <p className="text-xs text-teal-600 font-medium">{designation}</p>}
             </div>
             <button
               onClick={async () => { await signOut({ redirect: false }); window.location.href = "/auth/login"; }}

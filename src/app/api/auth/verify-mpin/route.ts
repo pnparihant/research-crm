@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { logAction } from "@/lib/auditLog";
-import type { JWT } from "next-auth/jwt";
+import { auth } from "@/auth";
 
 export async function POST(req: NextRequest) {
-  const token = await getToken({ req }) as JWT | null;
-  if (!token?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await auth();
+  if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { mpin } = await req.json();
   if (!mpin || typeof mpin !== "string" || !/^\d{6}$/.test(mpin)) {
@@ -16,7 +15,7 @@ export async function POST(req: NextRequest) {
   }
 
   await connectDB();
-  const user = await User.findOne({ email: token.email }).select("mpin name role");
+  const user = await User.findOne({ email: session.user.email }).select("mpin name role");
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   if (!user.mpin) {
@@ -28,6 +27,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Incorrect MPIN" }, { status: 400 });
   }
 
-  await logAction(req, token as never, "LOGIN", "Logged in via MPIN");
+  await logAction(req, session as never, "LOGIN", "Logged in via MPIN");
   return NextResponse.json({ success: true });
 }

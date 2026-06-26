@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { JWT } from "next-auth/jwt";
+import { Session } from "next-auth";
 import { connectDB } from "./mongodb";
 import { ActionLog } from "@/models/ActionLog";
 
@@ -13,18 +13,19 @@ export function getClientIp(req: NextRequest): string {
 
 export async function logAction(
   req: NextRequest,
-  token: JWT | null,
+  session: Session | null,
   action: string,
   details?: string
 ) {
-  console.log(`[auditLog] action=${action} user=${token?.email ?? "unknown"} ip=${getClientIp(req)}${details ? ` details="${details}"` : ""}`);
+  const user = session?.user;
+  console.log(`[auditLog] action=${action} user=${user?.email ?? "unknown"} ip=${getClientIp(req)}${details ? ` details="${details}"` : ""}`);
   try {
     await connectDB();
     await ActionLog.create({
-      userId:    token?.id    ?? null,
-      userName:  token?.name  ?? null,
-      userEmail: (token?.email as string) ?? null,
-      userRole:  token?.role  ?? null,
+      userId:    user?.id    ?? null,
+      userName:  user?.name  ?? null,
+      userEmail: user?.email ?? null,
+      userRole:  user?.role  ?? null,
       action,
       details:   details ?? null,
       ip:        getClientIp(req),

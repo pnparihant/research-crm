@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { Company } from "@/models/MasterData";
+import { auth } from "@/auth";
 
 export async function GET(req: NextRequest) {
   console.log("[mssql/stocks] GET — fetching stock list");
-  const token = await getToken({ req });
-  if (!token) {
+  const session = await auth();
+  if (!session?.user) {
     console.log("[mssql/stocks] GET FAIL — unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     .sort({ name: 1 })
     .lean();
 
-  console.log(`[mssql/stocks] GET — returned ${stocks.length} stocks to user=${token.email}`);
+  console.log(`[mssql/stocks] GET — returned ${stocks.length} stocks to user=${session.user.email}`);
   return NextResponse.json(
     stocks.map((s) => ({ StockName: s.name, sect_name: s.sector ?? "" }))
   );

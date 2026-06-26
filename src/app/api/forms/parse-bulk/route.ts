@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/auth";
 import ExcelJS from "exceljs";
 
 const REQUIRED_HEADERS = ["Date", "Client Name", "Mode of Communication", "Company", "Buy / Sell / Hold"];
@@ -32,8 +32,8 @@ function cellStr(value: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
-  const token = await getToken({ req });
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let formData: FormData;
   try {

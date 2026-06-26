@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { FormSubmission } from "@/models/FormSubmission";
+import { auth } from "@/auth";
 
 const DEFAULT_LIMIT = 500;
 
 export async function GET(req: NextRequest) {
-  const token = await getToken({ req });
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (token.role !== "master_admin")
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "master_admin")
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { searchParams } = req.nextUrl;
@@ -35,6 +35,6 @@ export async function GET(req: NextRequest) {
   if (limit > 0) query.limit(limit);
 
   const submissions = await query;
-  console.log(`[master-admin/submissions] returned ${submissions.length} (limit=${limit || "all"} search="${search}") to ${token.email}`);
+  console.log(`[master-admin/submissions] returned ${submissions.length} (limit=${limit || "all"} search="${search}") to ${session.user.email}`);
   return NextResponse.json(submissions);
 }

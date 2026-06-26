@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { AdminReport } from "@/models/AdminReport";
+import { auth } from "@/auth";
 
 const ADMIN_ROLES = ["admin", "master_admin"];
 
 export async function GET(req: NextRequest) {
-  const token = await getToken({ req });
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const t = token as Record<string, unknown>;
-  if (!ADMIN_ROLES.includes(t.role as string)) {
+  if (!ADMIN_ROLES.includes(session.user.role as string)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

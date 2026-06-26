@@ -1,10 +1,9 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/auth";
 import Setup2FAClient from "./Setup2FAClient";
 
 export default async function Setup2FAPage() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session) redirect("/auth/login");
   // Already set up — skip this page
   if (session.user.twoFactorEnabled) {

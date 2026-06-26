@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import mongoose from "mongoose";
 import { logAction } from "@/lib/auditLog";
 import { maskEmail, maskPhone } from "@/lib/mask";
+import { auth } from "@/auth";
 
 export async function GET(req: NextRequest) {
   console.log("[admin/users] GET — fetching all users");
-  const token = await getToken({ req });
-  if (!token) {
+  const session = await auth();
+  if (!session?.user) {
     console.log("[admin/users] GET FAIL — unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (token.role !== "admin" && token.role !== "master_admin") {
-    console.log(`[admin/users] GET FAIL — forbidden, role=${token.role}`);
+  if (session.user.role !== "admin" && session.user.role !== "master_admin") {
+    console.log(`[admin/users] GET FAIL — forbidden, role=${session.user.role}`);
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   // Fetch regular users + the requesting admin themselves (so admins can assign clients to themselves)
   const users = await User.collection
     .find(
-      { $or: [{ role: "user" }, { _id: new mongoose.Types.ObjectId(token.id as string) }] },
+      { $or: [{ role: "user" }, { _id: new mongoose.Types.ObjectId(session.user.id as string) }] },
       { projection: { name: 1, email: 1, phone: 1, role: 1, designation: 1, assignedClients: 1, createdAt: 1, twoFactorEnabled: 1 } }
     )
     .toArray();
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     })).filter((ac: { client: unknown }) => ac.client),
   }));
 
-  console.log(`[admin/users] GET — returned ${result.length} users to requester=${token.email}`);
+  console.log(`[admin/users] GET — returned ${result.length} users to requester=${session.user.email}`);
   return NextResponse.json(result);
 }
 
@@ -57,13 +57,13 @@ export async function GET(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
   console.log(`[admin/users] PATCH — userId=${id}`);
-  const token = await getToken({ req });
-  if (!token) {
+  const session = await auth();
+  if (!session?.user) {
     console.log("[admin/users] PATCH FAIL — unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (token.role !== "admin" && token.role !== "master_admin") {
-    console.log(`[admin/users] PATCH FAIL — forbidden, role=${token.role}`);
+  if (session.user.role !== "admin" && session.user.role !== "master_admin") {
+    console.log(`[admin/users] PATCH FAIL — forbidden, role=${session.user.role}`);
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -99,26 +99,26 @@ export async function PATCH(req: NextRequest) {
         $addToSet: {
           assignedClients: {
             client: cId,
-            assignedBy: new mongoose.Types.ObjectId(token.id as string),
-            assignedByName: token.name ?? "Admin",
+            assignedBy: new mongoose.Types.ObjectId(session.user.id as string),
+            assignedByName: session.user.name ?? "Admin",
             assignedAt: new Date(),
           },
         },
       }
     );
-    console.log(`[admin/users] PATCH — assigned clientId=${clientId} to userId=${id} by admin=${token.email}`);
+    console.log(`[admin/users] PATCH — assigned clientId=${clientId} to userId=${id} by admin=${session.user.email}`);
   } else if (action === "remove") {
     await col.updateOne(
       { _id: userId },
       { $pull: { assignedClients: { client: cId } as unknown as never } }
     );
-    console.log(`[admin/users] PATCH — removed clientId=${clientId} from userId=${id} by admin=${token.email}`);
+    console.log(`[admin/users] PATCH — removed clientId=${clientId} from userId=${id} by admin=${session.user.email}`);
   } else {
     console.log(`[admin/users] PATCH FAIL — unknown action="${action}"`);
     return NextResponse.json({ error: "action must be add or remove" }, { status: 400 });
   }
 
-  await logAction(req, token, action === "add" ? "ASSIGN_CLIENT" : "REMOVE_CLIENT",
+  await logAction(req, session, action === "add" ? "ASSIGN_CLIENT" : "REMOVE_CLIENT",
     `${action === "add" ? "Assigned" : "Removed"} client ${clientLabel} ${action === "add" ? "to" : "from"} user ${targetLabel}`);
   return NextResponse.json({ success: true });
 }

@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
+import { auth } from "@/auth";
 
 export async function POST(req: NextRequest) {
   console.log("[admin/users/disable-2fa] POST — incoming request");
-  const token = await getToken({ req });
-  if (!token) {
+  const session = await auth();
+  if (!session?.user) {
     console.log("[admin/users/disable-2fa] FAIL — unauthorized");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!["admin", "master_admin"].includes(token.role as string)) {
-    console.log(`[admin/users/disable-2fa] FAIL — forbidden, role=${token.role}`);
+  if (!["admin", "master_admin"].includes(session.user.role as string)) {
+    console.log(`[admin/users/disable-2fa] FAIL — forbidden, role=${session.user.role}`);
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -29,12 +29,12 @@ export async function POST(req: NextRequest) {
   }
 
   // master_admin can disable for anyone; admin can only disable for role=user
-  if (token.role === "admin" && target.role !== "user") {
+  if (session.user.role === "admin" && target.role !== "user") {
     console.log(`[admin/users/disable-2fa] FAIL — admin cannot disable 2FA for role=${target.role}`);
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   await User.findByIdAndUpdate(userId, { twoFactorEnabled: false, twoFactorSecret: null });
-  console.log(`[admin/users/disable-2fa] 2FA disabled for userId=${userId} (${target.email}) by ${token.email}`);
+  console.log(`[admin/users/disable-2fa] 2FA disabled for userId=${userId} (${target.email}) by ${session.user.email}`);
   return NextResponse.json({ success: true });
 }
