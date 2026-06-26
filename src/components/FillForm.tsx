@@ -32,6 +32,10 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
   const [clientsLoading, setClientsLoading] = useState(true);
   const [designationLoading, setDesignationLoading] = useState(true);
 
+  const [clientOtherText, setClientOtherText] = useState("");
+  const [companyOtherText, setCompanyOtherText] = useState("");
+  const [companyIsOther, setCompanyIsOther] = useState(false);
+
   // Stock search state
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [stocksLoading, setStocksLoading] = useState(true);
@@ -85,6 +89,16 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
     setStockQuery("");
     setForm((prev) => ({ ...prev, company: "", sector: "" }));
     setStockSelected(false);
+    setCompanyIsOther(false);
+    setCompanyOtherText("");
+  }
+
+  function selectCompanyOther() {
+    setStockQuery("");
+    setStockSelected(false);
+    setShowDropdown(false);
+    setCompanyIsOther(true);
+    setForm((prev) => ({ ...prev, company: "", sector: "" }));
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
@@ -96,12 +110,24 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
     e.preventDefault();
     if (!form.recommendation) { toast("Please select Buy, Sell or Hold", "warning"); return; }
     if (!form.modeOfCommunication) { toast("Please select mode of communication", "warning"); return; }
+    if (form.clientName === "__others__" && !clientOtherText.trim()) {
+      toast("Please enter the client name", "warning"); return;
+    }
+    if (companyIsOther && !companyOtherText.trim()) {
+      toast("Please enter the company name", "warning"); return;
+    }
     setLoading(true);
+
+    const payload = {
+      ...form,
+      clientName: form.clientName === "__others__" ? clientOtherText.trim() : form.clientName,
+      company: companyIsOther ? companyOtherText.trim() : form.company,
+    };
 
     const res = await fetch("/api/forms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();
@@ -112,6 +138,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
     toast("Form submitted successfully", "success");
     setForm({ ...EMPTY_FORM, salesPerson: userName });
     setStockQuery(""); setStockSelected(false);
+    setClientOtherText(""); setCompanyOtherText(""); setCompanyIsOther(false);
     setTimeout(() => onSubmitted(), 1000);
   }
 
@@ -211,9 +238,20 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                       {clientsLoading ? "Loading clients…" : clients.length === 0 ? "No clients assigned — contact admin" : "Select client"}
                     </option>
                     {clients.map((c) => <option key={c._id} value={c.name}>{c.name}</option>)}
+                    <option value="__others__">Others</option>
                   </select>
                   <SelectArrow />
                 </div>
+                {form.clientName === "__others__" && (
+                  <input
+                    type="text"
+                    value={clientOtherText}
+                    onChange={(e) => setClientOtherText(e.target.value)}
+                    placeholder="Enter client name…"
+                    className={inputCls}
+                    autoFocus
+                  />
+                )}
                 {!clientsLoading && clients.length === 0 && (
                   <p className="text-xs text-amber-600 mt-1">Ask your admin to assign clients to your account.</p>
                 )}
@@ -283,7 +321,26 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                     <Badge n={8} /> Company <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
-                    {stockSelected ? (
+                    {companyIsOther ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 px-3.5 py-2.5 border border-amber-300 rounded-lg bg-amber-50 text-sm text-amber-700 font-medium">
+                          <span className="flex-1">Others (manual entry)</span>
+                          <button type="button" onClick={clearStock} className="text-amber-500 hover:text-red-500 transition-colors shrink-0">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={companyOtherText}
+                          onChange={(e) => setCompanyOtherText(e.target.value)}
+                          placeholder="Enter company name…"
+                          className={inputCls}
+                          autoFocus
+                        />
+                      </div>
+                    ) : stockSelected ? (
                       <div className="flex items-center gap-2 px-3.5 py-2.5 border border-teal-400 rounded-lg bg-teal-50 text-sm text-teal-800 font-medium">
                         <svg className="w-4 h-4 text-teal-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -302,12 +359,18 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                           value={stockQuery}
                           onChange={(e) => { setStockQuery(e.target.value); setShowDropdown(true); setForm((p) => ({ ...p, company: e.target.value, sector: "" })); }}
                           onFocus={() => { if (stockQuery) setShowDropdown(true); }}
-                          required={!stockSelected}
+                          required={!stockSelected && !companyIsOther}
                           placeholder={stocksLoading ? "Loading stocks…" : "Type to search stock…"}
                           disabled={stocksLoading}
                           className={`${inputCls} pr-8 disabled:bg-gray-50 disabled:text-gray-400`}
                           autoComplete="off"
                         />
+                        <p className="text-xs text-gray-400 mt-1">
+                          Company not in list?{" "}
+                          <button type="button" onClick={selectCompanyOther} className="text-amber-600 hover:underline font-medium">
+                            Select Others
+                          </button>
+                        </p>
                         {stockQuery && (
                           <button type="button" onClick={clearStock} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -327,11 +390,29 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
                                 {s.sect_name && <span className="text-xs text-gray-400 ml-2 shrink-0">{s.sect_name}</span>}
                               </li>
                             ))}
+                            <li
+                              onMouseDown={selectCompanyOther}
+                              className="flex items-center gap-2 px-3.5 py-2.5 hover:bg-amber-50 cursor-pointer text-amber-700 font-medium border-t border-gray-200"
+                            >
+                              <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                              </svg>
+                              Others (not in list)
+                            </li>
                           </ul>
                         )}
                         {showDropdown && stockQuery.trim().length >= 1 && filteredStocks.length === 0 && !stocksLoading && (
-                          <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg px-3.5 py-3 text-sm text-gray-400">
-                            No stocks found for &quot;{stockQuery}&quot;
+                          <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm overflow-hidden">
+                            <div className="px-3.5 py-3 text-gray-400 border-b border-gray-100">No stocks found for &quot;{stockQuery}&quot;</div>
+                            <div
+                              onMouseDown={selectCompanyOther}
+                              className="flex items-center gap-2 px-3.5 py-2.5 hover:bg-amber-50 cursor-pointer text-amber-700 font-medium"
+                            >
+                              <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                              </svg>
+                              Others (not in list)
+                            </div>
                           </div>
                         )}
                       </>
