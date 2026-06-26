@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Company } from "@/models/MasterData";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   const groupId = new URL(req.url).searchParams.get("groupId");
   console.log(`[companies] GET — fetching companies groupId=${groupId ?? "all"}`);
   const session = await auth();
@@ -16,9 +17,9 @@ export async function GET(req: NextRequest) {
   const companies = await Company.find(query).sort({ name: 1 }).lean();
   console.log(`[companies] GET — returned ${companies.length} companies`);
   return NextResponse.json(companies);
-}
+};
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[companies] POST — create company");
   const session = await auth();
   if (!session?.user) {
@@ -38,9 +39,9 @@ export async function POST(req: NextRequest) {
   const doc = await Company.create({ name: name.trim(), groupId });
   console.log(`[companies] POST — created company name="${name.trim()}" groupId=${groupId} by user=${session.user.email}`);
   return NextResponse.json(doc, { status: 201 });
-}
+};
 
-export async function DELETE(req: NextRequest) {
+const _DELETE = async (req: NextRequest) => {
   const id = new URL(req.url).searchParams.get("id");
   console.log(`[companies] DELETE — id=${id}`);
   const session = await auth();
@@ -60,4 +61,8 @@ export async function DELETE(req: NextRequest) {
   await Company.findByIdAndDelete(id);
   console.log(`[companies] DELETE — deleted company id=${id} by user=${session.user.email}`);
   return NextResponse.json({ success: true });
-}
+};
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);
+export const DELETE = withErrorHandler(_DELETE);

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { ActionLog } from "@/models/ActionLog";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const page   = Math.max(1, parseInt(searchParams.get("page")  ?? "1"));
   const limit  = Math.min(100, parseInt(searchParams.get("limit") ?? "50"));
@@ -41,9 +42,9 @@ export async function GET(req: NextRequest) {
 
   console.log(`[master-admin/logs] GET — returned ${logs.length}/${total} logs to user=${session.user.email}`);
   return NextResponse.json({ logs, total, page, limit });
-}
+};
 
-export async function DELETE(req: NextRequest) {
+const _DELETE = async (req: NextRequest) => {
   console.log("[master-admin/logs] DELETE — clearing all logs");
   const session = await auth();
   if (!session?.user) {
@@ -59,4 +60,7 @@ export async function DELETE(req: NextRequest) {
   await ActionLog.deleteMany({});
   console.log(`[master-admin/logs] DELETE — all logs cleared by user=${session.user.email}`);
   return NextResponse.json({ success: true });
-}
+};
+
+export const GET = withErrorHandler(_GET);
+export const DELETE = withErrorHandler(_DELETE);

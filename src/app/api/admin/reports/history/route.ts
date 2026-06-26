@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { AdminReport } from "@/models/AdminReport";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 const ADMIN_ROLES = ["admin", "master_admin"];
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -20,4 +21,6 @@ export async function GET(req: NextRequest) {
     .lean();
 
   return NextResponse.json(reports);
-}
+};
+
+export const GET = withErrorHandler(_GET);

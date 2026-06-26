@@ -3,10 +3,11 @@ import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { FormSubmission } from "@/models/FormSubmission";
 import { sendEscalationEmail } from "@/lib/mailer";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 // Called by server cron at 7:15 PM IST (13:45 UTC) on weekdays — 15 min after the EOD warning.
 // Finds users who still haven't submitted after the warning and escalates to master admins.
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   const secret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
 
@@ -90,8 +91,11 @@ export async function POST(req: NextRequest) {
     escalatedTo: escalationEmails,
     errors,
   });
-}
+};
 
-export async function GET(req: NextRequest) {
-  return POST(req);
-}
+const _GET = async (req: NextRequest) => {
+  return _POST(req);
+};
+
+export const POST = withErrorHandler(_POST);
+export const GET = withErrorHandler(_GET);

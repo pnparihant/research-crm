@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import { FormSubmission } from "@/models/FormSubmission";
 import ExcelJS from "exceljs";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 let activeExports = 0;
 const MAX_CONCURRENT_EXPORTS = 2;
@@ -25,7 +26,7 @@ type SubmissionLean = {
   feedback?: string;
 };
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[master-admin/export] POST — Excel export with password");
 
   if (activeExports >= MAX_CONCURRENT_EXPORTS) {
@@ -190,4 +191,6 @@ export async function POST(req: NextRequest) {
   } finally {
     activeExports--;
   }
-}
+};
+
+export const POST = withErrorHandler(_POST);

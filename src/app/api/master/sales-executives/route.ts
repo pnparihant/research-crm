@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { SalesExecutive } from "@/models/MasterData";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   console.log("[sales-executives] GET — fetching all executives");
   const session = await auth();
   if (!session?.user) {
@@ -14,9 +15,9 @@ export async function GET(req: NextRequest) {
   const execs = await SalesExecutive.find().sort({ name: 1 }).lean();
   console.log(`[sales-executives] GET — returned ${execs.length} executives`);
   return NextResponse.json(execs);
-}
+};
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[sales-executives] POST — create executive");
   const session = await auth();
   if (!session?.user) {
@@ -36,9 +37,9 @@ export async function POST(req: NextRequest) {
   const doc = await SalesExecutive.create({ name: name.trim() });
   console.log(`[sales-executives] POST — created executive name="${name.trim()}" by user=${session.user.email}`);
   return NextResponse.json(doc, { status: 201 });
-}
+};
 
-export async function DELETE(req: NextRequest) {
+const _DELETE = async (req: NextRequest) => {
   const id = new URL(req.url).searchParams.get("id");
   console.log(`[sales-executives] DELETE — id=${id}`);
   const session = await auth();
@@ -58,4 +59,8 @@ export async function DELETE(req: NextRequest) {
   await SalesExecutive.findByIdAndDelete(id);
   console.log(`[sales-executives] DELETE — deleted executive id=${id} by user=${session.user.email}`);
   return NextResponse.json({ success: true });
-}
+};
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);
+export const DELETE = withErrorHandler(_DELETE);

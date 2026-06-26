@@ -4,10 +4,11 @@ import { User } from "@/models/User";
 import mongoose from "mongoose";
 import { generateTemplateBuffer } from "@/lib/templateGenerator";
 import { sendDailyTemplateEmail } from "@/lib/mailer";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 // Called by Vercel Cron at 7 AM IST (01:30 UTC) on weekdays.
 // Also callable manually: POST /api/cron/send-template with Authorization: Bearer <CRON_SECRET>
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   const secret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
 
@@ -75,9 +76,12 @@ export async function POST(req: NextRequest) {
 
   console.log(`[cron/send-template] Done — sent=${sent}, errors=${errors.length}`);
   return NextResponse.json({ sent, errors, total: users.length });
-}
+};
 
 // Vercel Cron uses GET by default when no method is specified
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   return POST(req);
-}
+};
+
+export const POST = withErrorHandler(_POST);
+export const GET = withErrorHandler(_GET);

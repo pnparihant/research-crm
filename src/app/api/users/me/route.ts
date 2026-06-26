@@ -3,8 +3,9 @@ import { auth } from "@/auth";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import mongoose from "mongoose";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -16,4 +17,6 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   return NextResponse.json({ name: user.name, designation: user.designation ?? "" });
-}
+};
+
+export const GET = withErrorHandler(_GET);

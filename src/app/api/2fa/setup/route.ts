@@ -4,8 +4,9 @@ import QRCode from "qrcode";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   console.log("[2fa/setup] GET — fetching 2FA setup for user");
   const session = await auth();
   if (!session?.user) {
@@ -40,4 +41,6 @@ export async function GET(req: NextRequest) {
 
   console.log(`[2fa/setup] QR code generated for user=${user.email}`);
   return NextResponse.json({ secret: base32Secret, qrCode: qrCodeUrl });
-}
+};
+
+export const GET = withErrorHandler(_GET);

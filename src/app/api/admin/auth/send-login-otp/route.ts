@@ -4,10 +4,11 @@ import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { sendLoginOtpEmail } from "@/lib/mailer";
 import { sendLoginOtpSms } from "@/lib/sms";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 const ADMIN_ROLES = ["admin", "master_admin"];
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   const { email } = await req.json();
   if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
@@ -98,4 +99,6 @@ export async function POST(req: NextRequest) {
 
   Promise.all(tasks).catch((err) => console.error("[admin/auth/send-login-otp] delivery error:", err));
   return NextResponse.json({ success: true });
-}
+};
+
+export const POST = withErrorHandler(_POST);

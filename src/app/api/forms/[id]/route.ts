@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { connectDB } from "@/lib/mongodb";
 import { FormSubmission } from "@/models/FormSubmission";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function DELETE(
+const _DELETE = async (
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   console.log(`[forms/${id}] DELETE — requested by user`);
   const session = await auth();
@@ -28,4 +29,6 @@ export async function DELETE(
 
   console.log(`[forms/${id}] DELETE — deleted by user=${session.user.email}`);
   return NextResponse.json({ success: true });
-}
+};
+
+export const DELETE = withErrorHandler(_DELETE);

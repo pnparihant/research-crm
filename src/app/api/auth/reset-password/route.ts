@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[reset-password] POST — incoming request");
   const { token, password } = await req.json();
   if (!token || !password) {
@@ -35,4 +36,6 @@ export async function POST(req: NextRequest) {
 
   console.log(`[reset-password] Password reset successful for user=${user.email}`);
   return NextResponse.json({ success: true });
-}
+};
+
+export const POST = withErrorHandler(_POST);

@@ -3,10 +3,11 @@ import { auth } from "@/auth";
 import { connectDB } from "@/lib/mongodb";
 import { ReportUpload } from "@/models/ReportUpload";
 import { logAction } from "@/lib/auditLog";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -45,9 +46,9 @@ export async function POST(req: NextRequest) {
   console.log(`[reports] uploaded ${file.name} by ${session.user.email}`);
 
   return NextResponse.json({ id: doc._id.toString(), filename: file.name }, { status: 201 });
-}
+};
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -58,4 +59,7 @@ export async function GET(req: NextRequest) {
     .lean();
 
   return NextResponse.json(reports);
-}
+};
+
+export const POST = withErrorHandler(_POST);
+export const GET = withErrorHandler(_GET);

@@ -3,8 +3,9 @@ import crypto from "crypto";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { sendPasswordResetEmail } from "@/lib/mailer";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[forgot-password] POST — incoming request");
   const { email } = await req.json();
   if (!email) {
@@ -47,4 +48,6 @@ export async function POST(req: NextRequest) {
   // In dev or when no SMTP, return the reset URL so it can be shared manually
   const isDev = process.env.NODE_ENV !== "production";
   return NextResponse.json({ success: true, ...(isDev || !process.env.SMTP_HOST ? { resetUrl } : {}) });
-}
+};
+
+export const POST = withErrorHandler(_POST);

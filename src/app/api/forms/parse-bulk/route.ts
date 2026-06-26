@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import ExcelJS from "exceljs";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 const REQUIRED_HEADERS = ["Date", "Client Name", "Mode of Communication", "Company", "Buy / Sell / Hold"];
 
@@ -31,7 +32,7 @@ function cellStr(value: unknown): string {
   return String(value).trim();
 }
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -122,4 +123,6 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ rows, signature: fileSignature });
-}
+};
+
+export const POST = withErrorHandler(_POST);

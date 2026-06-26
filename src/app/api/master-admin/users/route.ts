@@ -4,6 +4,7 @@ import { User } from "@/models/User";
 import { logAction } from "@/lib/auditLog";
 import { auth } from "@/auth";
 import type { Session } from "next-auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 function requireMasterAdmin(session: Session | null, label: string) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -14,7 +15,7 @@ function requireMasterAdmin(session: Session | null, label: string) {
   return null;
 }
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[master-admin/users] POST — create user");
   const session = await auth();
   const deny = requireMasterAdmin(session, "POST");
@@ -54,9 +55,9 @@ export async function POST(req: NextRequest) {
     { _id: user._id, name: user.name, email: user.email, role: user.role, designation: user.designation, createdAt: user.createdAt },
     { status: 201 }
   );
-}
+};
 
-export async function PUT(req: NextRequest) {
+const _PUT = async (req: NextRequest) => {
   const id = new URL(req.url).searchParams.get("id");
   console.log(`[master-admin/users] PUT — userId=${id}`);
   const session = await auth();
@@ -89,9 +90,9 @@ export async function PUT(req: NextRequest) {
   console.log(`[master-admin/users] PUT — updated user id=${id} by master_admin=${session!.user.email}`);
   await logAction(req, session!, "EDIT_USER", `Edited user: ${user.name} (${user.email})`);
   return NextResponse.json({ _id: user._id, name: user.name, email: user.email, phone: user.phone, designation: user.designation, createdAt: user.createdAt });
-}
+};
 
-export async function DELETE(req: NextRequest) {
+const _DELETE = async (req: NextRequest) => {
   const id = new URL(req.url).searchParams.get("id");
   console.log(`[master-admin/users] DELETE — userId=${id}`);
   const session = await auth();
@@ -117,4 +118,8 @@ export async function DELETE(req: NextRequest) {
   await User.findByIdAndDelete(id);
   console.log(`[master-admin/users] DELETE — deleted user email=${user.email} by master_admin=${session!.user.email}`);
   return NextResponse.json({ success: true });
-}
+};
+
+export const POST = withErrorHandler(_POST);
+export const PUT = withErrorHandler(_PUT);
+export const DELETE = withErrorHandler(_DELETE);

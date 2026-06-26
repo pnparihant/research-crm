@@ -3,10 +3,11 @@ import { connectDB } from "@/lib/mongodb";
 import { AdminReport } from "@/models/AdminReport";
 import { logAction } from "@/lib/auditLog";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 const ADMIN_ROLES = ["admin", "master_admin"];
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+const _GET = async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -27,9 +28,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       "Content-Length": report.size.toString(),
     },
   });
-}
+};
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+const _DELETE = async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -45,4 +46,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   await logAction(req, session as never, "ADMIN_REPORT_DELETE", `Admin deleted report: ${report.filename}`);
 
   return NextResponse.json({ success: true });
-}
+};
+
+export const GET = withErrorHandler(_GET);
+export const DELETE = withErrorHandler(_DELETE);

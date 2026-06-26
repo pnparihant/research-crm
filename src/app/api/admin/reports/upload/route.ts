@@ -3,11 +3,12 @@ import { connectDB } from "@/lib/mongodb";
 import { AdminReport } from "@/models/AdminReport";
 import { logAction } from "@/lib/auditLog";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 const ADMIN_ROLES = ["admin", "master_admin"];
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -49,4 +50,6 @@ export async function POST(req: NextRequest) {
   await logAction(req, session as never, "ADMIN_REPORT_UPLOAD", `Admin uploaded report: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
 
   return NextResponse.json({ id: doc._id.toString(), filename: file.name }, { status: 201 });
-}
+};
+
+export const POST = withErrorHandler(_POST);

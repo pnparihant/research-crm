@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Sector } from "@/models/MasterData";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   console.log("[sectors] GET — fetching all sectors");
   const session = await auth();
   if (!session?.user) {
@@ -14,9 +15,9 @@ export async function GET(req: NextRequest) {
   const sectors = await Sector.find().sort({ name: 1 }).lean();
   console.log(`[sectors] GET — returned ${sectors.length} sectors`);
   return NextResponse.json(sectors);
-}
+};
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[sectors] POST — create sector");
   const session = await auth();
   if (!session?.user) {
@@ -36,9 +37,9 @@ export async function POST(req: NextRequest) {
   const doc = await Sector.create({ name: name.trim() });
   console.log(`[sectors] POST — created sector name="${name.trim()}" by user=${session.user.email}`);
   return NextResponse.json(doc, { status: 201 });
-}
+};
 
-export async function DELETE(req: NextRequest) {
+const _DELETE = async (req: NextRequest) => {
   const id = new URL(req.url).searchParams.get("id");
   console.log(`[sectors] DELETE — id=${id}`);
   const session = await auth();
@@ -58,4 +59,8 @@ export async function DELETE(req: NextRequest) {
   await Sector.findByIdAndDelete(id);
   console.log(`[sectors] DELETE — deleted sector id=${id} by user=${session.user.email}`);
   return NextResponse.json({ success: true });
-}
+};
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);
+export const DELETE = withErrorHandler(_DELETE);

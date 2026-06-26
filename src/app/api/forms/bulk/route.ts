@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/mongodb";
 import { FormSubmission } from "@/models/FormSubmission";
 import { logAction } from "@/lib/auditLog";
 import { verifyTemplateSignature } from "@/lib/templateGenerator";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 function istDateLabel(date: Date): string {
   return date
@@ -43,7 +44,7 @@ function prevWorkingDayISTLabel(): string {
   return istDateLabel(new Date(prev.getTime() - istOffset));
 }
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[forms/bulk] POST — bulk upload");
   const session = await auth();
   if (!session?.user) {
@@ -154,4 +155,6 @@ export async function POST(req: NextRequest) {
   const inserted = await FormSubmission.insertMany(docs, { ordered: false });
   console.log(`[forms/bulk] POST — inserted ${inserted.length} entries for user=${session.user.email}`);
   return NextResponse.json({ inserted: inserted.length }, { status: 201 });
-}
+};
+
+export const POST = withErrorHandler(_POST);

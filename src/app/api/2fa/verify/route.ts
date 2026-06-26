@@ -3,8 +3,9 @@ import speakeasy from "speakeasy";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[2fa/verify] POST — incoming request");
   const session = await auth();
   if (!session?.user) {
@@ -47,4 +48,6 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ success: true });
-}
+};
+
+export const POST = withErrorHandler(_POST);

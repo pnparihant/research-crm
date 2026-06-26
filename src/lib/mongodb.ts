@@ -22,10 +22,22 @@ export async function connectDB(): Promise<typeof mongoose> {
 
   if (!cached.promise) {
     console.log("[mongodb] Connecting to MongoDB...");
-    cached.promise = mongoose.connect(MONGODB_URI, { bufferCommands: false, maxPoolSize: 20 });
+    cached.promise = mongoose
+      .connect(MONGODB_URI, { bufferCommands: false, maxPoolSize: 100 })
+      .catch((err) => {
+        cached.promise = null; // allow retry on next request
+        throw err;
+      });
   }
 
-  cached.conn = await cached.promise;
+  try {
+    cached.conn = await cached.promise;
+  } catch (err) {
+    cached.promise = null;
+    console.error("[mongodb] Connection failed:", err);
+    throw new Error("Database connection failed. Please try again later.");
+  }
+
   console.log("[mongodb] Connected to MongoDB");
   return cached.conn;
 }

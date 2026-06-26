@@ -3,8 +3,9 @@ import { auth } from "@/auth";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import mongoose from "mongoose";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   console.log("[users/my-clients] GET — fetching assigned clients");
   const session = await auth();
   if (!session?.user) {
@@ -47,4 +48,6 @@ export async function GET(req: NextRequest) {
 
   console.log(`[users/my-clients] GET — returned ${clientDocs.length} clients for user=${session.user.email}`);
   return NextResponse.json(clientDocs.map((c) => ({ _id: c._id.toString(), code: c.code, name: c.name })));
-}
+};
+
+export const GET = withErrorHandler(_GET);

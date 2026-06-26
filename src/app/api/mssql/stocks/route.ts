@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { Company } from "@/models/MasterData";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   console.log("[mssql/stocks] GET — fetching stock list");
   const session = await auth();
   if (!session?.user) {
@@ -20,4 +21,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     stocks.map((s) => ({ StockName: s.name, sect_name: s.sector ?? "" }))
   );
-}
+};
+
+export const GET = withErrorHandler(_GET);

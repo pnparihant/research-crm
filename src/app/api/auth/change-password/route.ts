@@ -4,8 +4,9 @@ import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { logAction } from "@/lib/auditLog";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[change-password] POST — incoming request");
   const session = await auth();
   if (!session?.user) {
@@ -42,4 +43,6 @@ export async function POST(req: NextRequest) {
   console.log(`[change-password] Password changed successfully for user=${user.email}`);
   await logAction(req, session, "CHANGE_PASSWORD", `Password changed by ${session.user.name ?? session.user.email}`);
   return NextResponse.json({ success: true });
-}
+};
+
+export const POST = withErrorHandler(_POST);

@@ -5,8 +5,9 @@ import { User } from "@/models/User";
 import { logAction } from "@/lib/auditLog";
 import { maskEmail, maskPhone } from "@/lib/mask";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   console.log("[master-admin/admins] GET — fetching all admins");
   const session = await auth();
   if (!session?.user) {
@@ -23,9 +24,9 @@ export async function GET(req: NextRequest) {
   const masked = admins.map((a) => ({ ...a, email: maskEmail(a.email), phone: maskPhone(a.phone) }));
   console.log(`[master-admin/admins] GET — returned ${admins.length} admins`);
   return NextResponse.json(masked);
-}
+};
 
-export async function PATCH(req: NextRequest) {
+const _PATCH = async (req: NextRequest) => {
   console.log("[master-admin/admins] PATCH — promote/demote");
   const session = await auth();
   if (!session?.user) {
@@ -73,9 +74,9 @@ export async function PATCH(req: NextRequest) {
       : `Demoted ${user.name} (${user.email}) to User`
   );
   return NextResponse.json({ _id: user._id, name: user.name, email: user.email, role: user.role });
-}
+};
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[master-admin/admins] POST — create admin");
   const session = await auth();
   if (!session?.user) {
@@ -110,4 +111,8 @@ export async function POST(req: NextRequest) {
   console.log(`[master-admin/admins] POST — created admin email=${email.toLowerCase()} by master_admin=${session.user.email}`);
   await logAction(req, session, "CREATE_ADMIN", `Created admin: ${name} (${email.toLowerCase()})`);
   return NextResponse.json({ _id: admin._id, name: admin.name, email: admin.email, role: admin.role }, { status: 201 });
-}
+};
+
+export const GET = withErrorHandler(_GET);
+export const PATCH = withErrorHandler(_PATCH);
+export const POST = withErrorHandler(_POST);

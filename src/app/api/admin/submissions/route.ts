@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { FormSubmission } from "@/models/FormSubmission";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 const DEFAULT_LIMIT = 500;
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.user.role !== "admin" && session.user.role !== "master_admin")
@@ -37,4 +38,6 @@ export async function GET(req: NextRequest) {
   const submissions = await query;
   console.log(`[admin/submissions] returned ${submissions.length} (limit=${limit || "all"} search="${search}") to ${session.user.email}`);
   return NextResponse.json(submissions);
-}
+};
+
+export const GET = withErrorHandler(_GET);

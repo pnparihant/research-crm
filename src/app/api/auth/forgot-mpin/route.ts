@@ -4,8 +4,9 @@ import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { sendLoginOtpEmail } from "@/lib/mailer";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -39,4 +40,6 @@ export async function POST(req: NextRequest) {
 
   const isDev = process.env.NODE_ENV !== "production";
   return NextResponse.json({ success: true, ...(isDev ? { otp } : {}) });
-}
+};
+
+export const POST = withErrorHandler(_POST);

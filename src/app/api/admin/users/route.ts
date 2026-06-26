@@ -5,8 +5,9 @@ import mongoose from "mongoose";
 import { logAction } from "@/lib/auditLog";
 import { maskEmail, maskPhone } from "@/lib/mask";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   console.log("[admin/users] GET — fetching all users");
   const session = await auth();
   if (!session?.user) {
@@ -51,10 +52,10 @@ export async function GET(req: NextRequest) {
 
   console.log(`[admin/users] GET — returned ${result.length} users to requester=${session.user.email}`);
   return NextResponse.json(result);
-}
+};
 
 // PATCH body: { action: "add" | "remove", clientId: string }
-export async function PATCH(req: NextRequest) {
+const _PATCH = async (req: NextRequest) => {
   const id = new URL(req.url).searchParams.get("id");
   console.log(`[admin/users] PATCH — userId=${id}`);
   const session = await auth();
@@ -121,4 +122,7 @@ export async function PATCH(req: NextRequest) {
   await logAction(req, session, action === "add" ? "ASSIGN_CLIENT" : "REMOVE_CLIENT",
     `${action === "add" ? "Assigned" : "Removed"} client ${clientLabel} ${action === "add" ? "to" : "from"} user ${targetLabel}`);
   return NextResponse.json({ success: true });
-}
+};
+
+export const GET = withErrorHandler(_GET);
+export const PATCH = withErrorHandler(_PATCH);

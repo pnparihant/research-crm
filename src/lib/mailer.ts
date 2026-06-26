@@ -1,5 +1,15 @@
 import nodemailer from "nodemailer";
 
+async function safeSendMail(transporter: nodemailer.Transporter, options: nodemailer.SendMailOptions, label: string) {
+  try {
+    await transporter.sendMail(options);
+    console.log(`[mailer] ${label} — sent successfully`);
+  } catch (err) {
+    console.error(`[mailer] ${label} — FAILED:`, err);
+    throw new Error(`Failed to send email (${label}). Please try again later.`);
+  }
+}
+
 export function createTransporter() {
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -15,7 +25,7 @@ export function createTransporter() {
 export async function sendLoginOtpEmail(to: string, otp: string) {
   console.log(`[mailer] sendLoginOtpEmail — to=${to}`);
   const transporter = createTransporter();
-  await transporter.sendMail({
+  await safeSendMail(transporter, {
     from: `"${process.env.SMTP_FROM_NAME ?? "Arihant Capital Markets"}" <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
     to,
     subject: "Your OTP for Arihant Capital Markets Research Servicing Tracker",
@@ -35,8 +45,7 @@ export async function sendLoginOtpEmail(to: string, otp: string) {
         <p style="color:#9ca3af;font-size:11px;text-align:center;">— ARIHANT</p>
       </div>
     `,
-  });
-  console.log(`[mailer] sendLoginOtpEmail — sent successfully to ${to}`);
+  }, `sendLoginOtpEmail to=${to}`);
 }
 
 export async function sendDailyTemplateEmail(
@@ -47,7 +56,7 @@ export async function sendDailyTemplateEmail(
 ) {
   console.log(`[mailer] sendDailyTemplateEmail — to=${to}`);
   const transporter = createTransporter();
-  await transporter.sendMail({
+  await safeSendMail(transporter, {
     from: `"${process.env.SMTP_FROM_NAME ?? "Arihant Capital Markets"}" <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
     to,
     subject: `CRM — Daily Submission Template (${dateLabel})`,
@@ -73,8 +82,7 @@ export async function sendDailyTemplateEmail(
         contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       },
     ],
-  });
-  console.log(`[mailer] sendDailyTemplateEmail — sent to ${to}`);
+  }, `sendDailyTemplateEmail to=${to}`);
 }
 
 export async function sendEODReminderEmail(
@@ -84,7 +92,7 @@ export async function sendEODReminderEmail(
 ) {
   console.log(`[mailer] sendEODReminderEmail — to=${to}`);
   const transporter = createTransporter();
-  await transporter.sendMail({
+  await safeSendMail(transporter, {
     from: `"${process.env.SMTP_FROM_NAME ?? "Arihant Capital Markets"}" <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
     to,
     subject: `CRM — Reminder: Sheet Not Submitted Today`,
@@ -111,8 +119,7 @@ export async function sendEODReminderEmail(
         <p style="color:#9ca3af;font-size:11px;text-align:center;">— Arihant Capital Markets CRM</p>
       </div>
     `,
-  });
-  console.log(`[mailer] sendEODReminderEmail — sent to ${to}`);
+  }, `sendEODReminderEmail to=${to}`);
 }
 
 export async function sendEscalationEmail(
@@ -134,7 +141,7 @@ export async function sendEscalationEmail(
     )
     .join("");
 
-  await transporter.sendMail({
+  await safeSendMail(transporter, {
     from: `"${process.env.SMTP_FROM_NAME ?? "Arihant Capital Markets"}" <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
     to,
     subject: `CRM — ESCALATION: ${missingUsers.length} User(s) Still Have Not Submitted`,
@@ -167,8 +174,7 @@ export async function sendEscalationEmail(
         <p style="color:#9ca3af;font-size:11px;text-align:center;">— Arihant Capital Markets CRM</p>
       </div>
     `,
-  });
-  console.log(`[mailer] sendEscalationEmail — sent to ${to}`);
+  }, `sendEscalationEmail to=${to}`);
 }
 
 export async function sendEODSummaryEmail(
@@ -190,7 +196,7 @@ export async function sendEODSummaryEmail(
     )
     .join("");
 
-  await transporter.sendMail({
+  await safeSendMail(transporter, {
     from: `"${process.env.SMTP_FROM_NAME ?? "Arihant Capital Markets"}" <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
     to,
     subject: `CRM — EOD Summary: ${missingUsers.length} of ${totalUsers} Users Yet to Submit`,
@@ -222,14 +228,13 @@ export async function sendEODSummaryEmail(
         <p style="color:#9ca3af;font-size:11px;text-align:center;">— Arihant Capital Markets CRM</p>
       </div>
     `,
-  });
-  console.log(`[mailer] sendEODSummaryEmail — sent to ${to}`);
+  }, `sendEODSummaryEmail to=${to}`);
 }
 
 export async function sendPasswordResetEmail(to: string, name: string, resetUrl: string) {
   console.log(`[mailer] sendPasswordResetEmail — to=${to}`);
   const transporter = createTransporter();
-  await transporter.sendMail({
+  await safeSendMail(transporter, {
     from: `"${process.env.SMTP_FROM_NAME ?? "Arihant Capital Markets"}" <${process.env.SMTP_FROM ?? process.env.SMTP_USER}>`,
     to,
     subject: "CRM — Reset your password",
@@ -240,6 +245,5 @@ export async function sendPasswordResetEmail(to: string, name: string, resetUrl:
       <p>If you did not request this, ignore this email.</p>
       <p style="color:#9ca3af;font-size:12px;">Arihant Capital Markets — CRM</p>
     `,
-  });
-  console.log(`[mailer] sendPasswordResetEmail — sent successfully to ${to}`);
+  }, `sendPasswordResetEmail to=${to}`);
 }

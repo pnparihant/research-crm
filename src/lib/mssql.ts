@@ -11,6 +11,11 @@ const config: sql.config = {
   },
   connectionTimeout: 15000,
   requestTimeout: 15000,
+  pool: {
+    max: 50,
+    min: 2,
+    idleTimeoutMillis: 30000,
+  },
 };
 
 let pool: sql.ConnectionPool | null = null;
@@ -21,7 +26,13 @@ export async function getMSSQLPool(): Promise<sql.ConnectionPool> {
     return pool;
   }
   console.log(`[mssql] Connecting to MSSQL server=${process.env.MSSQL_HOST} db=${process.env.MSSQL_DB}`);
-  pool = await new sql.ConnectionPool(config).connect();
-  console.log("[mssql] Connected to MSSQL");
-  return pool;
+  try {
+    pool = await new sql.ConnectionPool(config).connect();
+    console.log("[mssql] Connected to MSSQL");
+    return pool;
+  } catch (err) {
+    pool = null; // allow retry on next request
+    console.error("[mssql] Connection failed:", err);
+    throw new Error("MSSQL connection failed. Please try again later.");
+  }
 }

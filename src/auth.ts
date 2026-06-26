@@ -19,28 +19,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        await connectDB();
-        const user = await User.findOne({ email: (credentials.email as string).toLowerCase() });
-        if (!user) {
-          console.log(`[auth] authorize FAIL — user not found, email=${credentials.email}`);
+        try {
+          await connectDB();
+          const user = await User.findOne({ email: (credentials.email as string).toLowerCase() });
+          if (!user) {
+            console.log(`[auth] authorize FAIL — user not found, email=${credentials.email}`);
+            return null;
+          }
+
+          const isValid = await bcrypt.compare(credentials.password as string, user.password);
+          if (!isValid) {
+            console.log(`[auth] authorize FAIL — wrong password, email=${credentials.email}`);
+            return null;
+          }
+
+          console.log(`[auth] authorize OK — email=${user.email} role=${user.role} 2fa=${user.twoFactorEnabled}`);
+          return {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name,
+            role: user.role ?? "user",
+            twoFactorEnabled: user.twoFactorEnabled,
+            twoFactorVerified: false,
+          };
+        } catch (err) {
+          console.error("[auth] authorize ERROR:", err);
           return null;
         }
-
-        const isValid = await bcrypt.compare(credentials.password as string, user.password);
-        if (!isValid) {
-          console.log(`[auth] authorize FAIL — wrong password, email=${credentials.email}`);
-          return null;
-        }
-
-        console.log(`[auth] authorize OK — email=${user.email} role=${user.role} 2fa=${user.twoFactorEnabled}`);
-        return {
-          id: user._id.toString(),
-          email: user.email,
-          name: user.name,
-          role: user.role ?? "user",
-          twoFactorEnabled: user.twoFactorEnabled,
-          twoFactorVerified: false,
-        };
       },
     }),
   ],

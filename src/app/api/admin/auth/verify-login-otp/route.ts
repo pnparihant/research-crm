@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { logAction, getClientIp } from "@/lib/auditLog";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 const ADMIN_ROLES = ["admin", "master_admin"];
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   const { email, otp } = await req.json();
   if (!email || !otp) return NextResponse.json({ error: "Email and OTP required" }, { status: 400 });
 
@@ -52,4 +53,6 @@ export async function POST(req: NextRequest) {
   await logAction(req, fakeToken as never, "LOGIN", `Logged in via OTP`);
 
   return NextResponse.json({ success: true });
-}
+};
+
+export const POST = withErrorHandler(_POST);

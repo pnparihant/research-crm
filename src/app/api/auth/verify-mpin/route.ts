@@ -4,8 +4,9 @@ import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { logAction } from "@/lib/auditLog";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -29,4 +30,6 @@ export async function POST(req: NextRequest) {
 
   await logAction(req, session as never, "LOGIN", "Logged in via MPIN");
   return NextResponse.json({ success: true });
-}
+};
+
+export const POST = withErrorHandler(_POST);

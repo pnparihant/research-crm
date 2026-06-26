@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { connectDB } from "@/lib/mongodb";
 import { ReportUpload } from "@/models/ReportUpload";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 const ADMIN_ROLES = ["admin", "master_admin"];
 
-export async function GET(
+const _GET = async (
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -32,12 +33,12 @@ export async function GET(
       "Content-Length": report.size.toString(),
     },
   });
-}
+};
 
-export async function DELETE(
+const _DELETE = async (
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -53,4 +54,7 @@ export async function DELETE(
 
   await ReportUpload.findByIdAndDelete(id);
   return NextResponse.json({ success: true });
-}
+};
+
+export const GET = withErrorHandler(_GET);
+export const DELETE = withErrorHandler(_DELETE);

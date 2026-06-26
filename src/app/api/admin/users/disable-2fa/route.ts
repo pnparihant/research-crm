@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { auth } from "@/auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   console.log("[admin/users/disable-2fa] POST — incoming request");
   const session = await auth();
   if (!session?.user) {
@@ -37,4 +38,6 @@ export async function POST(req: NextRequest) {
   await User.findByIdAndUpdate(userId, { twoFactorEnabled: false, twoFactorSecret: null });
   console.log(`[admin/users/disable-2fa] 2FA disabled for userId=${userId} (${target.email}) by ${session.user.email}`);
   return NextResponse.json({ success: true });
-}
+};
+
+export const POST = withErrorHandler(_POST);

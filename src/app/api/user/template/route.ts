@@ -3,9 +3,10 @@ import { auth } from "@/auth";
 import { connectDB } from "@/lib/mongodb";
 import mongoose from "mongoose";
 import { generateTemplateBuffer } from "@/lib/templateGenerator";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 // GET /api/user/template — returns the personalized blank template as an Excel download
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -48,4 +49,6 @@ export async function GET(req: NextRequest) {
       "Content-Disposition": `attachment; filename="CRM_Sheet_${dateLabel}.xlsx"`,
     },
   });
-}
+};
+
+export const GET = withErrorHandler(_GET);

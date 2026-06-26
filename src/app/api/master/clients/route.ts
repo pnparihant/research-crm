@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import { Client } from "@/models/MasterData";
 import { auth } from "@/auth";
 import type { Session } from "next-auth";
+import { withErrorHandler } from "@/lib/apiHandler";
 
 function requireAdminOrAbove(session: Session | null) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -11,15 +12,15 @@ function requireAdminOrAbove(session: Session | null) {
   return null;
 }
 
-export async function GET(req: NextRequest) {
+const _GET = async (req: NextRequest) => {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   await connectDB();
   const clients = await Client.find().sort({ category: 1, name: 1 }).lean();
   return NextResponse.json(clients);
-}
+};
 
-export async function POST(req: NextRequest) {
+const _POST = async (req: NextRequest) => {
   const session = await auth();
   const deny = requireAdminOrAbove(session);
   if (deny) return deny;
@@ -36,9 +37,9 @@ export async function POST(req: NextRequest) {
   const doc = await Client.create({ name: name.trim(), category: category.trim() });
   console.log(`[master/clients] POST — created "${doc.name}" (${doc.category}) by ${session!.user.email}`);
   return NextResponse.json(doc, { status: 201 });
-}
+};
 
-export async function PUT(req: NextRequest) {
+const _PUT = async (req: NextRequest) => {
   const id = new URL(req.url).searchParams.get("id");
   const session = await auth();
   const deny = requireAdminOrAbove(session);
@@ -62,9 +63,9 @@ export async function PUT(req: NextRequest) {
   await doc.save();
   console.log(`[master/clients] PUT — updated id=${id} to "${doc.name}" (${doc.category}) by ${session!.user.email}`);
   return NextResponse.json(doc);
-}
+};
 
-export async function DELETE(req: NextRequest) {
+const _DELETE = async (req: NextRequest) => {
   const id = new URL(req.url).searchParams.get("id");
   const session = await auth();
   const deny = requireAdminOrAbove(session);
@@ -75,4 +76,9 @@ export async function DELETE(req: NextRequest) {
   await Client.findByIdAndDelete(id);
   console.log(`[master/clients] DELETE — deleted id=${id} by ${session!.user.email}`);
   return NextResponse.json({ success: true });
-}
+};
+
+export const GET = withErrorHandler(_GET);
+export const POST = withErrorHandler(_POST);
+export const PUT = withErrorHandler(_PUT);
+export const DELETE = withErrorHandler(_DELETE);
