@@ -15,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="font-sans bg-gray-50 min-h-screen" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <body className="font-sans bg-gray-50 min-h-screen" style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}>
         <AuthProvider><ToastProvider>{children}</ToastProvider></AuthProvider>
       </body>
     </html>
