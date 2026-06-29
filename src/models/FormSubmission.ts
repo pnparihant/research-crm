@@ -7,10 +7,11 @@ export interface IFormSubmission extends Document {
   clientName: string;
   designation: string;
   modeOfCommunication: "Phone" | "Online Meet" | "Physical";
-  company: string;
+  formType: "research" | "institution";
+  company?: string;
   sector: string;
-  cmpTarget: string;
-  recommendation: "Buy" | "Sell" | "Hold";
+  cmpTarget?: string;
+  recommendation?: "Buy" | "Sell" | "Hold";
   analystName: string;
   buySideAnalystDesignation: string;
   rationale: string;
@@ -27,10 +28,11 @@ const FormSubmissionSchema = new Schema<IFormSubmission>(
     clientName: { type: String, required: true },
     designation: { type: String, required: true },
     modeOfCommunication: { type: String, enum: ["Phone", "Online Meet", "Physical"], required: true },
-    company: { type: String, required: true },
+    formType: { type: String, enum: ["research", "institution"], required: true },
+    company: { type: String, default: "" },
     sector: { type: String, default: "" },
-    cmpTarget: { type: String, required: true },
-    recommendation: { type: String, enum: ["Buy", "Sell", "Hold"], required: true },
+    cmpTarget: { type: String, default: "" },
+    recommendation: { type: String, enum: ["Buy", "Sell", "Hold", ""], default: "" },
     analystName: { type: String, required: true },
     buySideAnalystDesignation: { type: String, default: "" },
     rationale: { type: String, default: "" },
