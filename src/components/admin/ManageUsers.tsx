@@ -13,8 +13,12 @@ interface UserRow {
   email: string;
   phone?: string;
   designation?: string;
+  dept?: "research" | "institution" | null;
   createdAt: string;
 }
+
+const DEPT_LABEL: Record<string, string> = { research: "Research", institution: "Institution" };
+const DEPT_STYLE: Record<string, string> = { research: "bg-blue-50 text-blue-700", institution: "bg-purple-50 text-purple-700" };
 
 const EyeIcon = ({ open }: { open: boolean }) =>
   open ? (
@@ -35,14 +39,14 @@ export default function ManageUsers() {
 
   // Create form
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", designation: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", designation: "", dept: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
   // Edit form
   const [editTarget, setEditTarget] = useState<UserRow | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", password: "", designation: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", password: "", designation: "", dept: "" });
   const [editShowPassword, setEditShowPassword] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
@@ -77,14 +81,14 @@ export default function ManageUsers() {
     setSaving(false);
     if (!res.ok) { setFormError(data.error ?? "Failed to create user"); return; }
     setUsers((prev) => [data, ...prev]);
-    setForm({ name: "", email: "", password: "", phone: "", designation: "" });
+    setForm({ name: "", email: "", password: "", phone: "", designation: "", dept: "" });
     setShowForm(false);
     toast(`User "${data.name}" created successfully`, "success");
   }
 
   function openEdit(u: UserRow) {
     setEditTarget(u);
-    setEditForm({ name: u.name, email: u.email, phone: u.phone ?? "", password: "", designation: u.designation ?? "" });
+    setEditForm({ name: u.name, email: u.email, phone: u.phone ?? "", password: "", designation: u.designation ?? "", dept: u.dept ?? "" });
     setEditError("");
     setEditShowPassword(false);
   }
@@ -235,7 +239,7 @@ export default function ManageUsers() {
                     </button>
                   </div>
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Designation</label>
                   <select
                     value={editForm.designation}
@@ -248,6 +252,18 @@ export default function ManageUsers() {
                         {g.options.map((o) => <option key={o}>{o}</option>)}
                       </optgroup>
                     ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Department</label>
+                  <select
+                    value={editForm.dept}
+                    onChange={(e) => setEditForm((p) => ({ ...p, dept: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none bg-white"
+                  >
+                    <option value="">No restriction</option>
+                    <option value="research">Research</option>
+                    <option value="institution">Institution</option>
                   </select>
                 </div>
               </div>
@@ -365,7 +381,7 @@ export default function ManageUsers() {
                     </button>
                   </div>
                 </div>
-                <div className="sm:col-span-2">
+                <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Designation <span className="text-gray-400 font-normal">(optional)</span></label>
                   <select
                     value={form.designation}
@@ -378,6 +394,18 @@ export default function ManageUsers() {
                         {g.options.map((o) => <option key={o}>{o}</option>)}
                       </optgroup>
                     ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Department <span className="text-gray-400 font-normal">(optional)</span></label>
+                  <select
+                    value={form.dept}
+                    onChange={(e) => setForm((p) => ({ ...p, dept: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none bg-white"
+                  >
+                    <option value="">No restriction</option>
+                    <option value="research">Research</option>
+                    <option value="institution">Institution</option>
                   </select>
                 </div>
               </div>
@@ -423,9 +451,10 @@ export default function ManageUsers() {
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
                     <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[15%]">Name</th>
-                    <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[25%]">Email</th>
-                    <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[30%] hidden lg:table-cell">Designation</th>
-                    <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[15%] hidden xl:table-cell">Phone</th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[22%]">Email</th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[10%]">Dept</th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[25%] hidden lg:table-cell">Designation</th>
+                    <th className="text-left px-4 py-2.5 font-semibold text-gray-500 text-xs uppercase tracking-wide w-[13%] hidden xl:table-cell">Phone</th>
                     <th className="px-4 py-2.5 text-right font-semibold text-gray-500 text-xs uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
@@ -436,6 +465,11 @@ export default function ManageUsers() {
                         <p className="font-medium text-gray-900 leading-snug">{u.name}</p>
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs break-all">{u.email}</td>
+                      <td className="px-4 py-3">
+                        {u.dept
+                          ? <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${DEPT_STYLE[u.dept]}`}>{DEPT_LABEL[u.dept]}</span>
+                          : <span className="text-gray-300 text-xs">—</span>}
+                      </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
                         {u.designation
                           ? <span className="inline-block max-w-[220px] truncate text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium" title={u.designation}>{u.designation}</span>
@@ -459,7 +493,10 @@ export default function ManageUsers() {
             <div className="md:hidden divide-y divide-gray-100">
               {filtered.map((u) => (
                 <div key={u._id} className="px-4 py-3 space-y-1">
-                  <p className="font-semibold text-gray-900 text-sm">{u.name}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-gray-900 text-sm">{u.name}</p>
+                    {u.dept && <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${DEPT_STYLE[u.dept]}`}>{DEPT_LABEL[u.dept]}</span>}
+                  </div>
                   <p className="text-xs text-gray-500 break-all">{u.email}</p>
                   {u.designation && (
                     <span className="inline-block text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">{u.designation}</span>

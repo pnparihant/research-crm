@@ -21,7 +21,7 @@ const _POST = async (req: NextRequest) => {
   const deny = requireMasterAdmin(session, "POST");
   if (deny) return deny;
 
-  const { name, email, password, phone, designation } = await req.json();
+  const { name, email, password, phone, designation, dept } = await req.json();
   if (!name || !email || !password) {
     console.log("[master-admin/users] POST FAIL — missing required fields");
     return NextResponse.json({ error: "Name, email and password are required" }, { status: 400 });
@@ -47,12 +47,13 @@ const _POST = async (req: NextRequest) => {
     role: "user",
     phone: phone || null,
     designation: designation || null,
+    dept: dept || null,
   });
 
   console.log(`[master-admin/users] POST — created user email=${email.toLowerCase()} by master_admin=${session!.user.email}`);
   await logAction(req, session!, "CREATE_USER", `Created user: ${name} (${email.toLowerCase()})`);
   return NextResponse.json(
-    { _id: user._id, name: user.name, email: user.email, role: user.role, designation: user.designation, createdAt: user.createdAt },
+    { _id: user._id, name: user.name, email: user.email, role: user.role, dept: user.dept, designation: user.designation, createdAt: user.createdAt },
     { status: 201 }
   );
 };
@@ -65,7 +66,7 @@ const _PUT = async (req: NextRequest) => {
   if (deny) return deny;
   if (!id) return NextResponse.json({ error: "User ID required" }, { status: 400 });
 
-  const { name, email, phone, password, designation } = await req.json();
+  const { name, email, phone, password, designation, dept } = await req.json();
   if (!name || !email) return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
   if (password && password.length < 8) return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
 
@@ -81,6 +82,7 @@ const _PUT = async (req: NextRequest) => {
   user.email = email.toLowerCase();
   user.phone = phone || null;
   user.designation = designation || null;
+  user.dept = dept || null;
   if (password) {
     const bcrypt = await import("bcryptjs");
     user.password = await bcrypt.hash(password, 12);
@@ -89,7 +91,7 @@ const _PUT = async (req: NextRequest) => {
 
   console.log(`[master-admin/users] PUT — updated user id=${id} by master_admin=${session!.user.email}`);
   await logAction(req, session!, "EDIT_USER", `Edited user: ${user.name} (${user.email})`);
-  return NextResponse.json({ _id: user._id, name: user.name, email: user.email, phone: user.phone, designation: user.designation, createdAt: user.createdAt });
+  return NextResponse.json({ _id: user._id, name: user.name, email: user.email, phone: user.phone, designation: user.designation, dept: user.dept, createdAt: user.createdAt });
 };
 
 const _DELETE = async (req: NextRequest) => {

@@ -12,6 +12,7 @@ export interface IUser extends Document {
   password: string;
   name: string;
   role: "user" | "admin" | "master_admin";
+  dept?: "research" | "institution" | null;
   designation?: string | null;
   twoFactorSecret: string | null;
   twoFactorEnabled: boolean;
@@ -41,6 +42,7 @@ const UserSchema = new Schema<IUser>(
     password: { type: String, required: true },
     name: { type: String, required: true },
     role: { type: String, enum: ["user", "admin", "master_admin"], default: "user" },
+    dept: { type: String, enum: ["research", "institution", null], default: null },
     designation: { type: String, default: null },
     twoFactorSecret: { type: String, default: null },
     twoFactorEnabled: { type: Boolean, default: false },

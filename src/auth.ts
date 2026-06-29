@@ -39,6 +39,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             email: user.email,
             name: user.name,
             role: user.role ?? "user",
+            dept: user.dept ?? null,
             twoFactorEnabled: user.twoFactorEnabled,
             twoFactorVerified: false,
           };
@@ -55,6 +56,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         console.log(`[auth] jwt callback — new session for email=${user.email} role=${(user as { role?: string }).role}`);
         token.id = user.id;
         token.role = (user as { role?: string }).role ?? "user";
+        token.dept = (user as { dept?: "research" | "institution" | null }).dept ?? null;
         token.twoFactorEnabled = (user as { twoFactorEnabled?: boolean }).twoFactorEnabled ?? false;
         token.twoFactorVerified = false;
       }
@@ -68,6 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as "user" | "admin" | "master_admin";
+        session.user.dept = token.dept as "research" | "institution" | null;
         session.user.twoFactorEnabled = token.twoFactorEnabled as boolean;
         session.user.twoFactorVerified = token.twoFactorVerified as boolean;
       }

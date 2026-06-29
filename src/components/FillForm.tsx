@@ -526,6 +526,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
   const [stocksLoading, setStocksLoading] = useState(true);
   const [designationLoading, setDesignationLoading] = useState(true);
   const [designation, setDesignation] = useState("");
+  const [dept, setDept] = useState<"research" | "institution" | null>(null);
 
   useEffect(() => {
     fetch("/api/users/my-clients")
@@ -542,15 +543,20 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
       .then((r) => r.json())
       .then((data) => {
         if (data.designation) setDesignation(data.designation);
+        if (data.dept) {
+          setDept(data.dept);
+          setActiveTab(data.dept);
+        }
         setDesignationLoading(false);
       })
       .catch(() => setDesignationLoading(false));
   }, []);
 
-  const tabs: { id: FormType; label: string; description: string }[] = [
+  const allTabs: { id: FormType; label: string; description: string }[] = [
     { id: "research", label: "Research", description: "Log client interaction & stock discussion" },
     { id: "institution", label: "Institution", description: "Log institutional client interaction" },
   ];
+  const tabs = dept ? allTabs.filter((t) => t.id === dept) : allTabs;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">

@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { connectDB } from "@/lib/mongodb";
 import { FormSubmission } from "@/models/FormSubmission";
+import { User } from "@/models/User";
 import { logAction } from "@/lib/auditLog";
 import { withErrorHandler } from "@/lib/apiHandler";
+import mongoose from "mongoose";
+import type { IUser } from "@/models/User";
 
 const _GET = async (req: NextRequest) => {
   console.log("[forms] GET — fetching submissions for user");
@@ -14,12 +17,45 @@ const _GET = async (req: NextRequest) => {
   }
 
   await connectDB();
-  const submissions = await FormSubmission.find({ userId: session.user.id })
+
+  // Own submissions
+  const own = await FormSubmission.find({ userId: session.user.id })
     .sort({ createdAt: -1 })
     .lean();
 
-  console.log(`[forms] GET — returned ${submissions.length} submissions for user=${session.user.email}`);
-  return NextResponse.json(submissions);
+  // Find shared colleagues — users who share at least one assigned client
+  const me = await User.findById(session.user.id).select("assignedClients").lean() as Pick<IUser, "assignedClients"> | null;
+  const myClientIds = (me?.assignedClients ?? []).map((ac) => ac.client.toString());
+
+  let shared: (typeof own[number] & { isShared?: boolean; sharedByName?: string })[] = [];
+
+  if (myClientIds.length > 0) {
+    const colleagues = await User.find({
+      _id: { $ne: new mongoose.Types.ObjectId(session.user.id) },
+      "assignedClients.client": { $in: myClientIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    }).select("_id name").lean() as unknown as { _id: mongoose.Types.ObjectId; name: string }[];
+
+    if (colleagues.length > 0) {
+      const nameMap = Object.fromEntries(colleagues.map((c) => [c._id.toString(), c.name]));
+      const colleagueIds = colleagues.map((c) => c._id);
+      const sharedRaw = await FormSubmission.find({ userId: { $in: colleagueIds } })
+        .sort({ createdAt: -1 })
+        .lean();
+      shared = sharedRaw.map((s) => ({
+        ...s,
+        isShared: true,
+        sharedByName: nameMap[s.userId.toString()] ?? "Colleague",
+      }));
+    }
+  }
+
+  // Merge: own first, then shared; sort combined by createdAt desc
+  const merged = [...own.map((s) => ({ ...s, isShared: false })), ...shared];
+  merged.sort((a, b) => new Date((b as unknown as { createdAt: string }).createdAt).getTime() - new Date((a as unknown as { createdAt: string }).createdAt).getTime());
+  const all = merged;
+
+  console.log(`[forms] GET — ${own.length} own + ${shared.length} shared submissions for user=${session.user.email}`);
+  return NextResponse.json(all);
 };
 
 const _POST = async (req: NextRequest) => {

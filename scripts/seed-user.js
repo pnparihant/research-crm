@@ -2,12 +2,12 @@
  * Create or update a CRM user from outside the app.
  *
  * Usage:
- *   node scripts/seed-user.js <email> <password> <name> [role] [phone]
+ *   node scripts/seed-user.js <email> <password> <name> [role] [phone] [dept]
  *
  * Examples:
  *   node scripts/seed-user.js john@arihant.com Pass@1234 "John Doe"
- *   node scripts/seed-user.js john@arihant.com Pass@1234 "John Doe" user 9920869996
- *   node scripts/seed-user.js admin@crm.com    Pass@1234 "Admin"    admin
+ *   node scripts/seed-user.js john@arihant.com Pass@1234 "John Doe" user 9920869996 research
+ *   node scripts/seed-user.js admin@crm.com    Pass@1234 "Admin"    admin "" institution
  */
 const path = require("path");
 const fs = require("fs");
@@ -23,10 +23,15 @@ if (fs.existsSync(envFile)) {
   });
 }
 
-const [,, email, password, name, role = "user", phone = null] = process.argv;
+const [,, email, password, name, role = "user", phone = null, dept = null] = process.argv;
 
 if (!email || !password || !name) {
-  console.error("Usage: node scripts/seed-user.js <email> <password> <name> [role] [phone]");
+  console.error("Usage: node scripts/seed-user.js <email> <password> <name> [role] [phone] [dept]");
+  process.exit(1);
+}
+
+if (dept && !["research", "institution"].includes(dept)) {
+  console.error("dept must be 'research' or 'institution'");
   process.exit(1);
 }
 
@@ -35,6 +40,7 @@ const UserSchema = new mongoose.Schema({
   password:         { type: String, required: true },
   name:             { type: String, required: true },
   role:             { type: String, enum: ["user", "admin", "master_admin"], default: "user" },
+  dept:             { type: String, enum: ["research", "institution", null], default: null },
   phone:            { type: String, default: null },
   twoFactorSecret:  { type: String, default: null },
   twoFactorEnabled: { type: Boolean, default: false },
@@ -49,14 +55,15 @@ async function main() {
   const existing = await User.findOne({ email: email.toLowerCase() });
 
   if (existing) {
-    await User.updateOne({ email: email.toLowerCase() }, { $set: { password: hashed, name, role, ...(phone ? { phone } : {}) } });
-    console.log(`✓ Updated user: ${email}  role: ${role}`);
+    await User.updateOne({ email: email.toLowerCase() }, { $set: { password: hashed, name, role, dept: dept || null, ...(phone ? { phone } : {}) } });
+    console.log(`✓ Updated user: ${email}  role: ${role}  dept: ${dept || "none"}`);
   } else {
-    await User.create({ email: email.toLowerCase(), password: hashed, name, role, phone });
+    await User.create({ email: email.toLowerCase(), password: hashed, name, role, phone, dept: dept || null });
     console.log(`✓ Created user:`);
     console.log(`  Email:    ${email}`);
     console.log(`  Password: ${password}`);
     console.log(`  Role:     ${role}`);
+    console.log(`  Dept:     ${dept || "none"}`);
   }
 
   await mongoose.disconnect();

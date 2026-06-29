@@ -19,6 +19,8 @@ interface Submission {
   feedback: string;
   others: string;
   submittedAt: string;
+  isShared?: boolean;
+  sharedByName?: string;
 }
 
 const REC_STYLES = {
@@ -53,6 +55,9 @@ export default function History() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterRec, setFilterRec] = useState("");
+  const [filterShared, setFilterShared] = useState<"all" | "mine" | "shared">("all");
+
+  const hasShared = submissions.some((s) => s.isShared);
 
   useEffect(() => {
     fetch("/api/forms")
@@ -69,9 +74,14 @@ export default function History() {
       (s.clientName ?? "").toLowerCase().includes(q) ||
       (s.salesPerson ?? "").toLowerCase().includes(q) ||
       (s.sector ?? "").toLowerCase().includes(q) ||
-      (s.analystName ?? "").toLowerCase().includes(q);
+      (s.analystName ?? "").toLowerCase().includes(q) ||
+      (s.sharedByName ?? "").toLowerCase().includes(q);
     const matchRec = !filterRec || s.recommendation === filterRec;
-    return matchSearch && matchRec;
+    const matchShared =
+      filterShared === "all" ||
+      (filterShared === "mine" && !s.isShared) ||
+      (filterShared === "shared" && s.isShared);
+    return matchSearch && matchRec && matchShared;
   });
 
   if (loading) return (
@@ -103,6 +113,14 @@ export default function History() {
             <option value="Sell">Sell</option>
             <option value="Hold">Hold</option>
           </select>
+          {hasShared && (
+            <select value={filterShared} onChange={(e) => setFilterShared(e.target.value as "all" | "mine" | "shared")}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white">
+              <option value="all">All</option>
+              <option value="mine">Mine only</option>
+              <option value="shared">Shared only</option>
+            </select>
+          )}
           <div className="text-sm text-gray-500 flex items-center whitespace-nowrap">{filtered.length} of {submissions.length}</div>
         </div>
       </div>
@@ -118,7 +136,7 @@ export default function History() {
       ) : (
         <div className="space-y-3">
           {filtered.map((s) => (
-            <div key={s._id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div key={s._id} className={`bg-white rounded-xl shadow-sm border overflow-hidden ${s.isShared ? "border-l-4 border-l-amber-400 border-gray-200" : "border-gray-200"}`}>
               <div className="p-5 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setExpanded(expanded === s._id ? null : s._id)}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -145,6 +163,14 @@ export default function History() {
                       ? <p className="text-sm text-gray-500">{s.salesPerson}</p>
                       : <p className="text-sm text-gray-500">{s.clientName} &nbsp;·&nbsp; {s.salesPerson}</p>
                     }
+                    {s.isShared && (
+                      <p className="text-xs text-amber-600 font-medium mt-0.5 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Shared by {s.sharedByName}
+                      </p>
+                    )}
                     <p className="text-xs text-gray-400 mt-1">
                       {new Date(s.submittedAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       &nbsp;·&nbsp; Meeting: {s.date}

@@ -4,6 +4,7 @@ declare module "next-auth" {
   interface User {
     id: string;
     role: string;
+    dept?: "research" | "institution" | null;
     twoFactorEnabled: boolean;
     twoFactorVerified: boolean;
   }
@@ -13,6 +14,7 @@ declare module "next-auth" {
       email: string;
       name: string;
       role: "user" | "admin" | "master_admin";
+      dept?: "research" | "institution" | null;
       twoFactorEnabled: boolean;
       twoFactorVerified: boolean;
     } & DefaultSession["user"];
@@ -23,6 +25,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: string;
+    dept?: "research" | "institution" | null;
     twoFactorEnabled: boolean;
     twoFactorVerified: boolean;
   }

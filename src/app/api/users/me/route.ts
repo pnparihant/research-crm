@@ -12,11 +12,11 @@ const _GET = async (req: NextRequest) => {
   await connectDB();
   const user = await User.collection.findOne(
     { _id: new mongoose.Types.ObjectId(session.user.id as string) },
-    { projection: { name: 1, designation: 1 } }
+    { projection: { name: 1, designation: 1, dept: 1 } }
   );
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  return NextResponse.json({ name: user.name, designation: user.designation ?? "" });
+  return NextResponse.json({ name: user.name, designation: user.designation ?? "", dept: user.dept ?? null });
 };
 
 export const GET = withErrorHandler(_GET);
