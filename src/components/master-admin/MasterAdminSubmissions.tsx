@@ -371,7 +371,7 @@ export default function MasterAdminSubmissions() {
         <Box sx={{ width: "100%", height: 600 }}>
           <DataGrid
             rows={allRows} columns={columns} loading={loading} pageSizeOptions={[25, 50, 100]}
-            initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+            initialState={{ pagination: { paginationModel: { pageSize: 25 } }, pinnedColumns: { right: ["actions"] } }}
             filterModel={filterModel} onFilterModelChange={handleFilterModelChange}
             slots={{ toolbar: Toolbar }}
             disableRowSelectionOnClick
