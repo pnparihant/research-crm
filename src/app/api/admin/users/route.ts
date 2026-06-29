@@ -24,7 +24,7 @@ const _GET = async (req: NextRequest) => {
   const users = await User.collection
     .find(
       { $or: [{ role: "user" }, { _id: new mongoose.Types.ObjectId(session.user.id as string) }] },
-      { projection: { name: 1, email: 1, phone: 1, role: 1, designation: 1, assignedClients: 1, createdAt: 1, twoFactorEnabled: 1 } }
+      { projection: { name: 1, email: 1, phone: 1, role: 1, designation: 1, dept: 1, assignedClients: 1, createdAt: 1, twoFactorEnabled: 1 } }
     )
     .toArray();
 
@@ -39,9 +39,11 @@ const _GET = async (req: NextRequest) => {
     : [];
   const clientMap = Object.fromEntries(clientDocs.map((c) => [c._id.toString(), { name: c.name, code: c.code }]));
 
+  const isMasterAdmin = session.user.role === "master_admin";
   const result = users.map((u) => ({
     ...u,
     email: maskEmail(u.email),
+    ...(isMasterAdmin && { _rawEmail: u.email }),
     phone: maskPhone(u.phone),
     assignedClients: (u.assignedClients ?? []).map((ac: { client: mongoose.Types.ObjectId; assignedByName: string; assignedAt: Date }) => ({
       client: ac.client ? { _id: ac.client.toString(), name: clientMap[ac.client.toString()]?.name ?? "—", code: clientMap[ac.client.toString()]?.code ?? "" } : null,

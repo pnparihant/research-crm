@@ -11,6 +11,7 @@ interface UserRow {
   _id: string;
   name: string;
   email: string;
+  _rawEmail?: string;
   phone?: string;
   designation?: string;
   dept?: "research" | "institution" | null;
@@ -88,7 +89,7 @@ export default function ManageUsers() {
 
   function openEdit(u: UserRow) {
     setEditTarget(u);
-    setEditForm({ name: u.name, email: u.email, phone: u.phone ?? "", password: "", designation: u.designation ?? "", dept: u.dept ?? "" });
+    setEditForm({ name: u.name, email: u._rawEmail ?? u.email, phone: u.phone ?? "", password: "", designation: u.designation ?? "", dept: u.dept ?? "" });
     setEditError("");
     setEditShowPassword(false);
   }
