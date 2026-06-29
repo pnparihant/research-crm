@@ -71,7 +71,7 @@ const _POST = async (req: NextRequest) => {
 
   // Server-side filename date validation
   if (filename) {
-    const dateMatch = filename.match(/CRM_Template_(\d{2}-\d{2}-\d{4})/);
+    const dateMatch = filename.match(/CRM_Sheet_(\d{2}-\d{2}-\d{4})/);
     const today = todayISTLabel();
 
     if (!dateMatch) {
@@ -141,6 +141,7 @@ const _POST = async (req: NextRequest) => {
     clientName:               row.clientName ?? "",
     designation:              row.designation ?? "",
     modeOfCommunication:      row.modeOfCommunication ?? "",
+    formType:                 row.company?.trim() ? "research" : "institution",
     company:                  row.company ?? "",
     sector:                   row.sector ?? "",
     cmpTarget:                row.cmpTarget ?? "",
