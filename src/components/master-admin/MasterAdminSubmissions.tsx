@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import {
   DataGrid, GridColDef, GridToolbarContainer, GridToolbarFilterButton,
   GridToolbarDensitySelector, GridToolbarColumnsButton, GridRenderCellParams,
-  GridFilterModel, getGridStringOperators, getGridSingleSelectOperators,
+  GridFilterModel, getGridStringOperators,
 } from "@mui/x-data-grid";
 import { Chip, Tooltip, Box } from "@mui/material";
 import { useToast } from "@/components/ui/Toast";
@@ -207,7 +207,7 @@ export default function MasterAdminSubmissions() {
     { field: "designation", headerName: "Designation", width: 140, filterOperators: strOps },
     { field: "modeOfCommunication", headerName: "Mode", width: 130, filterOperators: strOps },
     {
-      field: "formType", headerName: "Type", width: 120, type: "singleSelect", valueOptions: ["research", "institution"], filterOperators: getGridSingleSelectOperators(),
+      field: "formType", headerName: "Type", width: 120, filterOperators: strOps,
       renderCell: (p: GridRenderCellParams) => (
         <Chip label={p.value === "institution" ? "Institution" : "Research"} size="small" sx={{ fontWeight: 600, fontSize: 12, bgcolor: p.value === "institution" ? "#f3e8ff" : "#eff6ff", color: p.value === "institution" ? "#7e22ce" : "#1d4ed8" }} />
       ),

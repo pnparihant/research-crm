@@ -81,10 +81,17 @@ const _POST = async (req: NextRequest) => {
     );
   }
 
-  // Column mapping (1-indexed, matching template header order):
-  // 1=Sr.No  2=Date  3=Arihant Rep  4=Designation  5=Client Name
-  // 6=Buy Side Person  7=Buy Side Person Designation  8=Mode  9=Company
-  // 10=Sector  11=CMP & Target  12=Buy/Sell/Hold  13=Rationale  14=Feedback
+  // Build a dynamic column index map from header names (1-indexed, ExcelJS convention).
+  // This handles any extra/shifted columns (e.g. export files with a leading "Type" column).
+  const colIdx: Record<string, number> = {};
+  (ws.getRow(1).values as unknown[]).forEach((h, i) => {
+    if (i === 0) return; // ExcelJS row.values[0] is always undefined
+    const key = cellStr(h).toLowerCase();
+    if (key) colIdx[key] = i;
+  });
+
+  const col = (name: string) => colIdx[name.toLowerCase()] ?? -1;
+
   const rows: Array<{
     date: string;
     clientName: string;
@@ -103,22 +110,23 @@ const _POST = async (req: NextRequest) => {
   ws.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
     const v = row.values as unknown[];
-    const get = (i: number) => v[i] ?? "";
-    // Skip entirely empty rows
-    if ([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].every((i) => !cellStr(get(i)))) return;
+    const get = (i: number) => (i >= 1 ? v[i] ?? "" : "");
+    // Skip entirely empty rows (check all mapped columns)
+    const allCols = Object.values(colIdx);
+    if (allCols.every((i) => !cellStr(get(i)))) return;
     rows.push({
-      date:                      parseCellDate(get(2)),
-      designation:               cellStr(get(4)),
-      clientName:                cellStr(get(5)),
-      analystName:               cellStr(get(6)),
-      buySideAnalystDesignation: cellStr(get(7)),
-      modeOfCommunication:       cellStr(get(8)),
-      company:                   cellStr(get(9)),
-      sector:                    cellStr(get(10)),
-      cmpTarget:                 cellStr(get(11)),
-      recommendation:            cellStr(get(12)),
-      rationale:                 cellStr(get(13)),
-      feedback:                  cellStr(get(14)),
+      date:                      parseCellDate(get(col("date"))),
+      designation:               cellStr(get(col("designation"))),
+      clientName:                cellStr(get(col("client name"))),
+      analystName:               cellStr(get(col("buy side person"))),
+      buySideAnalystDesignation: cellStr(get(col("buy side person designation"))),
+      modeOfCommunication:       cellStr(get(col("mode of communication"))),
+      company:                   cellStr(get(col("company"))),
+      sector:                    cellStr(get(col("sector"))),
+      cmpTarget:                 cellStr(get(col("cmp & target"))),
+      recommendation:            cellStr(get(col("buy / sell / hold"))),
+      rationale:                 cellStr(get(col("rationale"))),
+      feedback:                  cellStr(get(col("feedback"))),
     });
   });
 
