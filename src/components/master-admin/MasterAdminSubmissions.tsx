@@ -188,6 +188,19 @@ export default function MasterAdminSubmissions() {
   const strOps = getGridStringOperators().filter((op) => ["contains", "equals", "startsWith", "endsWith"].includes(op.value));
 
   const columns: GridColDef[] = [
+    {
+      field: "actions", headerName: "", width: 60, sortable: false, filterable: false, disableColumnMenu: true,
+      renderCell: (p: GridRenderCellParams) => (
+        <button
+          onClick={() => setConfirmId(p.row.id as string)}
+          disabled={deletingId === p.row.id}
+          className="flex items-center justify-center w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-40"
+          title="Delete submission"
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        </button>
+      ),
+    },
     { field: "date", headerName: "Date", width: 110, filterOperators: strOps },
     { field: "salesPerson", headerName: "Arihant Representative", width: 160, filterOperators: strOps },
     { field: "clientName", headerName: "Client", width: 200, filterOperators: strOps },
@@ -217,19 +230,6 @@ export default function MasterAdminSubmissions() {
       ),
     },
     { field: "submittedAt", headerName: "Submitted At", width: 170, filterOperators: strOps },
-    {
-      field: "actions", headerName: "", width: 80, sortable: false, filterable: false, disableColumnMenu: true,
-      renderCell: (p: GridRenderCellParams) => (
-        <button
-          onClick={() => setConfirmId(p.row.id as string)}
-          disabled={deletingId === p.row.id}
-          className="flex items-center justify-center w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-40"
-          title="Delete submission"
-        >
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-        </button>
-      ),
-    },
   ];
 
   return (
@@ -371,7 +371,7 @@ export default function MasterAdminSubmissions() {
         <Box sx={{ width: "100%", height: 600 }}>
           <DataGrid
             rows={allRows} columns={columns} loading={loading} pageSizeOptions={[25, 50, 100]}
-            initialState={{ pagination: { paginationModel: { pageSize: 25 } }, pinnedColumns: { right: ["actions"] } }}
+            initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
             filterModel={filterModel} onFilterModelChange={handleFilterModelChange}
             slots={{ toolbar: Toolbar }}
             disableRowSelectionOnClick
