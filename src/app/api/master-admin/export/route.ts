@@ -10,6 +10,7 @@ const MAX_CONCURRENT_EXPORTS = 2;
 
 type SubmissionLean = {
   userId: { name?: string; email?: string } | null;
+  formType?: string;
   recommendation: string;
   submittedAt?: Date;
   date?: string;
@@ -24,6 +25,7 @@ type SubmissionLean = {
   cmpTarget?: string;
   rationale?: string;
   feedback?: string;
+  others?: string;
 };
 
 const _POST = async (req: NextRequest) => {
@@ -89,12 +91,13 @@ const _POST = async (req: NextRequest) => {
 
     ws.columns = [
       { header: "Sr.No",                        key: "srno",      width: 7  },
+      { header: "Type",                          key: "type",      width: 14 },
       { header: "Date",                          key: "date",      width: 13 },
       { header: "Arihant Representative",        key: "rep",       width: 24 },
       { header: "Designation",                   key: "desig",     width: 20 },
       { header: "Client Name",                   key: "client",    width: 28 },
-      { header: "Buy Side Person",              key: "analyst",   width: 24 },
-      { header: "Buy Side Person Designation",  key: "adesig",    width: 28 },
+      { header: "Buy Side Person",               key: "analyst",   width: 24 },
+      { header: "Buy Side Person Designation",   key: "adesig",    width: 28 },
       { header: "Mode of Communication",         key: "mode",      width: 20 },
       { header: "Company",                       key: "company",   width: 24 },
       { header: "Sector",                        key: "sector",    width: 18 },
@@ -102,6 +105,7 @@ const _POST = async (req: NextRequest) => {
       { header: "Buy / Sell / Hold",             key: "rec",       width: 14 },
       { header: "Rationale",                     key: "rationale", width: 35 },
       { header: "Feedback",                      key: "feedback",  width: 35 },
+      { header: "Others",                        key: "others",    width: 35 },
       { header: "Submitted By",                  key: "subBy",     width: 22 },
       { header: "Email",                         key: "email",     width: 30 },
       { header: "Submitted At",                  key: "subAt",     width: 20 },
@@ -119,10 +123,12 @@ const _POST = async (req: NextRequest) => {
     submissions.forEach((s, i) => {
       const user = s.userId;
       const rec = s.recommendation;
+      const isInsti = s.formType === "institution";
       const subAt = s.submittedAt ? new Date(s.submittedAt) : null;
 
       const row = ws.addRow({
         srno:      i + 1,
+        type:      isInsti ? "Institution" : "Research",
         date:      s.date,
         rep:       s.salesPerson,
         desig:     s.designation,
@@ -130,12 +136,13 @@ const _POST = async (req: NextRequest) => {
         analyst:   s.analystName,
         adesig:    s.buySideAnalystDesignation,
         mode:      s.modeOfCommunication,
-        company:   s.company,
-        sector:    s.sector,
-        cmp:       s.cmpTarget,
-        rec,
+        company:   isInsti ? "" : s.company,
+        sector:    isInsti ? "" : s.sector,
+        cmp:       isInsti ? "" : s.cmpTarget,
+        rec:       isInsti ? "" : rec,
         rationale: s.rationale,
         feedback:  s.feedback,
+        others:    s.others,
         subBy:     user?.name ?? "",
         email:     user?.email ?? "",
         subAt:     subAt
@@ -143,10 +150,24 @@ const _POST = async (req: NextRequest) => {
           : "",
       });
 
-      const recCell = row.getCell("rec");
-      if (rec === "Buy")  recCell.font = { color: { argb: "FF15803D" }, bold: true };
-      if (rec === "Sell") recCell.font = { color: { argb: "FFB91C1C" }, bold: true };
-      if (rec === "Hold") recCell.font = { color: { argb: "FFB45309" }, bold: true };
+      // Type cell colour
+      const typeCell = row.getCell("type");
+      typeCell.font = { bold: true, color: { argb: isInsti ? "FF6B21A8" : "FF1D4ED8" } };
+
+      // Rec cell colour (research only)
+      if (!isInsti) {
+        const recCell = row.getCell("rec");
+        if (rec === "Buy")  recCell.font = { color: { argb: "FF15803D" }, bold: true };
+        if (rec === "Sell") recCell.font = { color: { argb: "FFB91C1C" }, bold: true };
+        if (rec === "Hold") recCell.font = { color: { argb: "FFB45309" }, bold: true };
+      }
+
+      // Light background for institution rows
+      if (isInsti) {
+        row.eachCell({ includeEmpty: true }, (cell) => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFAF5FF" } };
+        });
+      }
 
       row.eachCell({ includeEmpty: true }, (cell) => {
         cell.border = BORDER;

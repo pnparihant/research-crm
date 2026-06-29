@@ -153,7 +153,7 @@ export default function AdminSubmissionsTable() {
     { field: "salesPerson", headerName: "Arihant Representative", width: 160, filterOperators: strOps },
     { field: "clientName", headerName: "Client", width: 200, filterOperators: strOps },
     { field: "designation", headerName: "Designation", width: 140, filterOperators: strOps },
-    { field: "modeOfCommunication", headerName: "Mode", width: 130, type: "singleSelect", valueOptions: ["Phone", "Online Meet", "Physical"], filterOperators: getGridSingleSelectOperators() },
+    { field: "modeOfCommunication", headerName: "Mode", width: 130, filterOperators: strOps },
     {
       field: "formType", headerName: "Type", width: 120, type: "singleSelect", valueOptions: ["research", "institution"], filterOperators: getGridSingleSelectOperators(),
       renderCell: (p: GridRenderCellParams) => (
@@ -164,7 +164,7 @@ export default function AdminSubmissionsTable() {
     { field: "sector", headerName: "Sector", width: 120, filterOperators: strOps },
     { field: "cmpTarget", headerName: "CMP & Target", width: 130, filterOperators: strOps },
     {
-      field: "recommendation", headerName: "Rec.", width: 100, type: "singleSelect", valueOptions: ["Buy", "Sell", "Hold"], filterOperators: getGridSingleSelectOperators(),
+      field: "recommendation", headerName: "Rec.", width: 100, filterOperators: strOps,
       renderCell: (p: GridRenderCellParams) => p.value ? <Chip label={p.value as string} color={REC_COLOR[p.value as string] ?? "default"} size="small" sx={{ fontWeight: 600, fontSize: 12 }} /> : null,
     },
     { field: "analystName", headerName: "Buy Side Person", width: 160, filterOperators: strOps },
