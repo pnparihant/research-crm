@@ -14,10 +14,11 @@ interface Row {
   clientName: string;
   designation: string;
   modeOfCommunication: string;
+  formType: "research" | "institution";
   company: string;
   sector: string;
   cmpTarget: string;
-  recommendation: "Buy" | "Sell" | "Hold";
+  recommendation: "Buy" | "Sell" | "Hold" | "";
   analystName: string;
   buySideAnalystDesignation: string;
   rationale: string;
@@ -53,10 +54,11 @@ function mapSubmissions(data: Record<string, unknown>[]): Row[] {
       clientName: s.clientName as string,
       designation: (s.designation as string) ?? "",
       modeOfCommunication: (s.modeOfCommunication as string) ?? "",
+      formType: ((s.formType as string) === "institution" ? "institution" : "research") as "research" | "institution",
       company: (s.company as string) ?? "",
       sector: (s.sector as string) ?? "",
       cmpTarget: (s.cmpTarget as string) ?? "",
-      recommendation: s.recommendation as "Buy" | "Sell" | "Hold",
+      recommendation: (s.recommendation as "Buy" | "Sell" | "Hold") ?? "",
       analystName: (s.analystName as string) ?? "",
       buySideAnalystDesignation: (s.buySideAnalystDesignation as string) ?? "",
       rationale: (s.rationale as string) ?? "",
@@ -152,12 +154,18 @@ export default function AdminSubmissionsTable() {
     { field: "clientName", headerName: "Client", width: 200, filterOperators: strOps },
     { field: "designation", headerName: "Designation", width: 140, filterOperators: strOps },
     { field: "modeOfCommunication", headerName: "Mode", width: 130, type: "singleSelect", valueOptions: ["Phone", "Online Meet", "Physical"], filterOperators: getGridSingleSelectOperators() },
+    {
+      field: "formType", headerName: "Type", width: 120, type: "singleSelect", valueOptions: ["research", "institution"], filterOperators: getGridSingleSelectOperators(),
+      renderCell: (p: GridRenderCellParams) => (
+        <Chip label={p.value === "institution" ? "Institution" : "Research"} size="small" sx={{ fontWeight: 600, fontSize: 12, bgcolor: p.value === "institution" ? "#f3e8ff" : "#eff6ff", color: p.value === "institution" ? "#7e22ce" : "#1d4ed8" }} />
+      ),
+    },
     { field: "company", headerName: "Company", width: 150, filterOperators: strOps },
     { field: "sector", headerName: "Sector", width: 120, filterOperators: strOps },
     { field: "cmpTarget", headerName: "CMP & Target", width: 130, filterOperators: strOps },
     {
       field: "recommendation", headerName: "Rec.", width: 100, type: "singleSelect", valueOptions: ["Buy", "Sell", "Hold"], filterOperators: getGridSingleSelectOperators(),
-      renderCell: (p: GridRenderCellParams) => <Chip label={p.value as string} color={REC_COLOR[p.value as string] ?? "default"} size="small" sx={{ fontWeight: 600, fontSize: 12 }} />,
+      renderCell: (p: GridRenderCellParams) => p.value ? <Chip label={p.value as string} color={REC_COLOR[p.value as string] ?? "default"} size="small" sx={{ fontWeight: 600, fontSize: 12 }} /> : null,
     },
     { field: "analystName", headerName: "Buy Side Person", width: 160, filterOperators: strOps },
     { field: "buySideAnalystDesignation", headerName: "Buy Side Person Designation", width: 200, filterOperators: strOps },
@@ -256,10 +264,20 @@ export default function AdminSubmissionsTable() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="font-semibold text-gray-900 text-sm">{r.company || "—"}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${REC_STYLES[r.recommendation]}`}>{r.recommendation}</span>
+                        {r.formType === "institution" ? (
+                          <>
+                            <span className="font-semibold text-gray-900 text-sm">{r.clientName}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-purple-100 text-purple-700">Institution</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-gray-900 text-sm">{r.company || "—"}</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-blue-100 text-blue-700">Research</span>
+                            {r.recommendation && <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${REC_STYLES[r.recommendation]}`}>{r.recommendation}</span>}
+                          </>
+                        )}
                       </div>
-                      <p className="text-xs text-gray-500 truncate">{r.clientName} · {r.salesPerson}</p>
+                      <p className="text-xs text-gray-500 truncate">{r.formType === "institution" ? r.salesPerson : `${r.clientName} · ${r.salesPerson}`}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{r.date}</p>
                     </div>
                     <svg className={`w-4 h-4 text-gray-400 shrink-0 mt-1 transition-transform ${expandedCard === r.id ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -272,8 +290,7 @@ export default function AdminSubmissionsTable() {
                     {[
                       ["Designation", r.designation],
                       ["Mode", r.modeOfCommunication],
-                      ["Sector", r.sector],
-                      ["CMP & Target", r.cmpTarget],
+                      ...(r.formType !== "institution" ? [["Sector", r.sector], ["CMP & Target", r.cmpTarget]] : []),
                       ["Buy Side Person", r.analystName],
                       ["BS Analyst Designation", r.buySideAnalystDesignation],
                       ["Rationale", r.rationale],

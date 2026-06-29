@@ -8,10 +8,11 @@ interface Submission {
   clientName: string;
   designation: string;
   modeOfCommunication: string;
+  formType?: "research" | "institution";
   company: string;
   sector: string;
   cmpTarget: string;
-  recommendation: "Buy" | "Sell" | "Hold";
+  recommendation: "Buy" | "Sell" | "Hold" | "";
   analystName: string;
   buySideAnalystDesignation: string;
   rationale: string;
@@ -122,16 +123,28 @@ export default function History() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="font-semibold text-gray-900">{s.company}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${REC_STYLES[s.recommendation]}`}>{s.recommendation}</span>
-                      {s.sector && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{s.sector}</span>}
+                      {s.formType === "institution" ? (
+                        <>
+                          <span className="font-semibold text-gray-900">{s.clientName}</span>
+                          <span className="text-xs bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full font-medium">Institution</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-semibold text-gray-900">{s.company}</span>
+                          {s.recommendation && <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${REC_STYLES[s.recommendation as "Buy" | "Sell" | "Hold"]}`}>{s.recommendation}</span>}
+                          {s.sector && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{s.sector}</span>}
+                        </>
+                      )}
                       {s.modeOfCommunication && (
                         <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full flex items-center gap-1">
                           {MODE_ICON[s.modeOfCommunication]} {s.modeOfCommunication}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500">{s.clientName} &nbsp;·&nbsp; {s.salesPerson}</p>
+                    {s.formType === "institution"
+                      ? <p className="text-sm text-gray-500">{s.salesPerson}</p>
+                      : <p className="text-sm text-gray-500">{s.clientName} &nbsp;·&nbsp; {s.salesPerson}</p>
+                    }
                     <p className="text-xs text-gray-400 mt-1">
                       {new Date(s.submittedAt).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       &nbsp;·&nbsp; Meeting: {s.date}
@@ -147,7 +160,7 @@ export default function History() {
                 <div className="border-t border-gray-100 px-5 py-5">
                   <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                     <Detail label="Designation" value={s.designation} />
-                    <Detail label="CMP & Target" value={s.cmpTarget} />
+                    {s.formType !== "institution" && <Detail label="CMP & Target" value={s.cmpTarget} />}
                     <Detail label="Buy Side Person" value={s.analystName} />
                     {s.buySideAnalystDesignation && <Detail label="BS Analyst Designation" value={s.buySideAnalystDesignation} />}
                     {s.rationale && <Detail label="Rationale" value={s.rationale} full />}
