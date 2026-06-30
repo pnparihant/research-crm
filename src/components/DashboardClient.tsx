@@ -5,10 +5,11 @@ import { signOut } from "next-auth/react";
 import FillForm from "./FillForm";
 import BulkUpload from "./BulkUpload";
 import History from "./History";
+import UserSubmissionsTable from "./shared/UserSubmissionsTable";
 import ChangePassword from "./ChangePassword";
 import UploadReports from "./UploadReports";
 
-type Tab = "fill" | "bulk" | "history" | "reports" | "settings";
+type Tab = "fill" | "bulk" | "history" | "submissions" | "reports" | "settings";
 
 export default function DashboardClient({ session }: { session: Session }) {
   const [activeTab, setActiveTab] = useState<Tab>("fill");
@@ -52,6 +53,15 @@ export default function DashboardClient({ session }: { session: Session }) {
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      ),
+    },
+    {
+      id: "submissions",
+      label: "Submissions",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2a4 4 0 014-4h3m0 0l-3-3m3 3l-3 3M3 12a9 9 0 1018 0 9 9 0 00-18 0z" />
         </svg>
       ),
     },
@@ -127,6 +137,7 @@ export default function DashboardClient({ session }: { session: Session }) {
         {activeTab === "fill" && <FillForm onSubmitted={onFormSubmitted} userName={session.user.name} />}
         {activeTab === "bulk" && <BulkUpload onSubmitted={onFormSubmitted} userName={session.user.name} />}
         {activeTab === "history" && <History key={refreshKey} />}
+        {activeTab === "submissions" && <UserSubmissionsTable key={refreshKey} />}
         {activeTab === "reports" && <UploadReports />}
         {activeTab === "settings" && <ChangePassword accentColor="teal" />}
       </main>
