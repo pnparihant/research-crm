@@ -48,7 +48,7 @@ const MODE_ICON: Record<string, React.ReactNode> = {
   ),
 };
 
-export default function History() {
+export default function AdminHistory() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -61,7 +61,7 @@ export default function History() {
       .then((r) => r.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
-        // History only shows the user's own submissions — shared records live under the Submissions tab
+        // Admin history only shows the admin's own submissions — shared records live under the Submissions tab
         setSubmissions(list.filter((s: Submission) => !s.isShared));
         setLoading(false);
       })
@@ -120,7 +120,7 @@ export default function History() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <p className="text-gray-500 font-medium">{submissions.length === 0 ? "No submissions yet" : "No matching submissions"}</p>
-          <p className="text-gray-400 text-sm mt-1">{submissions.length === 0 ? "Fill out the tracker form to get started" : "Try adjusting your search"}</p>
+          <p className="text-gray-400 text-sm mt-1">{submissions.length === 0 ? "No data has been submitted yet" : "Try adjusting your search or filters"}</p>
         </div>
       ) : (
         <div className="space-y-3">

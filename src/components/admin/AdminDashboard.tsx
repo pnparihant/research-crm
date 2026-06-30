@@ -10,8 +10,9 @@ import ManageClients from "./ManageClients";
 import ChangePassword from "@/components/ChangePassword";
 import FillForm from "@/components/FillForm";
 import BulkUpload from "@/components/BulkUpload";
+import AdminHistory from "./AdminHistory";
 
-type Tab = "submissions" | "fill" | "bulk" | "clients" | "users" | "reports" | "upload-reports" | "security";
+type Tab = "submissions" | "fill" | "history" | "bulk" | "clients" | "users" | "reports" | "upload-reports" | "security";
 
 export default function AdminDashboard({ session }: { session: Session }) {
   const [tab, setTab] = useState<Tab>("submissions");
@@ -29,6 +30,15 @@ export default function AdminDashboard({ session }: { session: Session }) {
     {
       id: "fill",
       label: "Fill Form",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      ),
+    },
+     {
+      id: "history",
+      label: "History",
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -141,6 +151,7 @@ export default function AdminDashboard({ session }: { session: Session }) {
       <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6">
         {tab === "submissions" && <AdminSubmissionsTable />}
         {tab === "fill"        && <FillForm onSubmitted={() => setTab("submissions")} userName={session.user.name ?? ""} />}
+        {tab === "history"     && <AdminHistory />}
         {tab === "bulk"        && <BulkUpload onSubmitted={() => setTab("submissions")} userName={session.user.name ?? ""} />}
         {tab === "clients"     && <ManageClients />}
         {tab === "users"       && <AssignClients />}
