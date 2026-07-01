@@ -150,9 +150,9 @@ export default function AdminDashboard({ session }: { session: Session }) {
 
       <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6">
         {tab === "submissions" && <AdminSubmissionsTable />}
-        {tab === "fill"        && <FillForm onSubmitted={() => setTab("submissions")} userName={session.user.name ?? ""} />}
+        {tab === "fill"        && <FillForm onSubmitted={() => setTab("submissions")} userName={session.user.name ?? ""} isAdmin />}
         {tab === "history"     && <AdminHistory />}
-        {tab === "bulk"        && <BulkUpload onSubmitted={() => setTab("submissions")} userName={session.user.name ?? ""} />}
+        {tab === "bulk"        && <BulkUpload onSubmitted={() => setTab("submissions")} userName={session.user.name ?? ""} isAdmin />}
         {tab === "clients"     && <ManageClients />}
         {tab === "users"       && <AssignClients />}
         {tab === "reports"        && <AdminReports />}

@@ -109,6 +109,7 @@ const _POST = async (req: NextRequest) => {
 
   ws.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
+    if (row.hidden) return; // skip rows hidden in the sheet
     const v = row.values as unknown[];
     const get = (i: number) => (i >= 1 ? v[i] ?? "" : "");
     // Skip entirely empty rows (check all mapped columns)

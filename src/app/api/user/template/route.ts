@@ -41,7 +41,8 @@ const _GET = async (req: NextRequest) => {
   }).replace(/\//g, "-");
 
   const clientNames = clientDocs.map((c) => c.name as string);
-  const buffer = await generateTemplateBuffer(clientNames, session.user.id as string, dateLabel);
+  const isAdmin = session.user.role === "admin" || session.user.role === "master_admin";
+  const buffer = await generateTemplateBuffer(clientNames, session.user.id as string, dateLabel, isAdmin);
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

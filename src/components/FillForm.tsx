@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { MODES as BASE_MODES, ADMIN_MODES } from "@/lib/modeOfCommunication";
 
 interface ClientItem { _id: string; name: string }
 interface StockItem { StockName: string; sect_name: string }
@@ -12,7 +13,7 @@ const EMPTY_FORM = {
   salesPerson: "",
   clientName: "",
   designation: "",
-  modeOfCommunication: "" as "Phone" | "Online Meet" | "Physical" | "",
+  modeOfCommunication: "" as "Phone" | "Online Meet" | "Physical" | "Message" | "",
   company: "",
   sector: "",
   cmpTarget: "",
@@ -24,10 +25,9 @@ const EMPTY_FORM = {
   others: "",
 };
 
-const MODES = ["Phone", "Online Meet", "Physical"] as const;
-
 function FormPanel({
   formType,
+  isAdmin,
   userName,
   onSubmitted,
   clients,
@@ -38,6 +38,7 @@ function FormPanel({
   initialDesignation,
 }: {
   formType: FormType;
+  isAdmin: boolean;
   userName: string;
   onSubmitted: () => void;
   clients: ClientItem[];
@@ -49,6 +50,7 @@ function FormPanel({
 }) {
   const { toast } = useToast();
   const [form, setForm] = useState({ ...EMPTY_FORM, salesPerson: userName, designation: initialDesignation });
+  const MODES = isAdmin ? ADMIN_MODES : BASE_MODES;
   const [loading, setLoading] = useState(false);
 
   const [clientOtherText, setClientOtherText] = useState("");
@@ -377,6 +379,11 @@ function FormPanel({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
                         )}
+                        {mode === "Message" && (
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                        )}
                         {mode}
                       </div>
                     </label>
@@ -604,7 +611,7 @@ function FormPanel({
   );
 }
 
-export default function FillForm({ onSubmitted, userName }: { onSubmitted: () => void; userName: string }) {
+export default function FillForm({ onSubmitted, userName, isAdmin = false }: { onSubmitted: () => void; userName: string; isAdmin?: boolean }) {
   const [activeTab, setActiveTab] = useState<FormType>("research");
   const [clients, setClients] = useState<ClientItem[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
@@ -679,6 +686,7 @@ export default function FillForm({ onSubmitted, userName }: { onSubmitted: () =>
       <FormPanel
         key={activeTab}
         formType={activeTab}
+        isAdmin={isAdmin}
         userName={userName}
         onSubmitted={onSubmitted}
         clients={clients}

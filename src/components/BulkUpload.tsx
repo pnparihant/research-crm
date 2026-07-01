@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
+import { MODES as BASE_MODES, ADMIN_MODES, normalizeMode } from "@/lib/modeOfCommunication";
 
 interface ClientItem { _id: string; name: string }
 interface StockItem  { StockName: string; sect_name: string }
@@ -39,14 +40,19 @@ const DESIGNATIONS = [
   "Back Office Operations",
 ];
 
-const MODES = ["Phone", "Online Meet", "Physical"];
 const RECS  = ["Buy", "Sell", "Hold"];
 
-function validateRow(row: Omit<Row, "_errors">, _clients: ClientItem[], stocks: StockItem[]): string[] {
+function validateRow(row: Omit<Row, "_errors">, _clients: ClientItem[], stocks: StockItem[], isAdmin: boolean, designation: string): string[] {
   const errs: string[] = [];
-  // Only flag invalid values — blank is always fine
-  if (row.modeOfCommunication && !MODES.includes(row.modeOfCommunication))
-    errs.push(`Mode must be: ${MODES.join(" / ")}`);
+  const modes = isAdmin ? ADMIN_MODES : BASE_MODES;
+  // Only flag invalid values — blank is always fine. Case doesn't matter.
+  if (row.modeOfCommunication) {
+    const normalized = normalizeMode(row.modeOfCommunication, isAdmin);
+    if (!(modes as readonly string[]).includes(normalized))
+      errs.push(`Mode must be: ${modes.join(" / ")}`);
+    else
+      row.modeOfCommunication = normalized;
+  }
   if (row.recommendation && !RECS.includes(row.recommendation))
     errs.push(`Rec. must be: ${RECS.join(" / ")}`);
   // Auto-fill sector from stock list
@@ -54,6 +60,8 @@ function validateRow(row: Omit<Row, "_errors">, _clients: ClientItem[], stocks: 
     const match = stocks.find(s => s.StockName.toLowerCase() === row.company.toLowerCase());
     if (match) row.sector = match.sect_name ?? "";
   }
+  // Designation is the uploading user's own designation — always the same for every row
+  if (designation) row.designation = designation;
   return errs;
 }
 
@@ -89,10 +97,11 @@ async function downloadTemplate() {
   URL.revokeObjectURL(url);
 }
 
-export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () => void; userName: string }) {
+export default function BulkUpload({ onSubmitted, userName, isAdmin = false }: { onSubmitted: () => void; userName: string; isAdmin?: boolean }) {
   const [rows, setRows]         = useState<Row[]>([]);
   const [clients, setClients]   = useState<ClientItem[]>([]);
   const [stocks, setStocks]     = useState<StockItem[]>([]);
+  const [designation, setDesignation] = useState("");
   const [loading, setLoading]   = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -107,31 +116,35 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
   useEffect(() => {
     fetch("/api/users/my-clients").then(r => r.json()).then(d => setClients(Array.isArray(d) ? d : [])).catch(() => {});
     fetch("/api/mssql/stocks").then(r => r.json()).then(d => setStocks(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch("/api/users/me").then(r => r.json()).then(d => setDesignation(d.designation ?? "")).catch(() => {});
   }, []);
 
   const parseFile = useCallback(async (file: File) => {
     setSheetError(null);
     setUploadedFileName(file.name);
 
-    // Validate that the filename contains today's IST date (CRM_Sheet_DD-MM-YYYY)
-    const dateMatch = file.name.match(/CRM_Sheet_(\d{2}-\d{2}-\d{4})/);
-    if (!dateMatch) {
-      const msg = "Invalid file — please use the official template downloaded from this portal.";
-      setSheetError(msg);
-      toast(msg, "error");
-      setRows([]);
-      return;
-    }
-    const fileDate = dateMatch[1];
-    const today = todayISTLabel();
-    const yesterday = yesterdayISTLabel();
-    // T+1 validity: accept today's or yesterday's sheet
-    if (fileDate !== today && fileDate !== yesterday) {
-      const msg = `Date mismatch — this sheet is for ${fileDate}. You can only upload today's or yesterday's sheet.`;
-      setSheetError(msg);
-      toast(msg, "error");
-      setRows([]);
-      return;
+    // Admins are exempt from the filename/date template check.
+    if (!isAdmin) {
+      // Validate that the filename contains today's IST date (CRM_Sheet_DD-MM-YYYY)
+      const dateMatch = file.name.match(/CRM_Sheet_(\d{2}-\d{2}-\d{4})/);
+      if (!dateMatch) {
+        const msg = "Invalid file — please use the official template downloaded from this portal.";
+        setSheetError(msg);
+        toast(msg, "error");
+        setRows([]);
+        return;
+      }
+      const fileDate = dateMatch[1];
+      const today = todayISTLabel();
+      const yesterday = yesterdayISTLabel();
+      // T+1 validity: accept today's or yesterday's sheet
+      if (fileDate !== today && fileDate !== yesterday) {
+        const msg = `Date mismatch — this sheet is for ${fileDate}. You can only upload today's or yesterday's sheet.`;
+        setSheetError(msg);
+        toast(msg, "error");
+        setRows([]);
+        return;
+      }
     }
 
     const formData = new FormData();
@@ -159,7 +172,7 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
 
     const rows: Row[] = parsed.rows.map((base) => {
       const row = { ...base };
-      return { ...row, _errors: validateRow(row, clients, stocks) };
+      return { ...row, _errors: validateRow(row, clients, stocks, isAdmin, designation) };
     });
 
     setRows(rows);
@@ -171,7 +184,7 @@ export default function BulkUpload({ onSubmitted, userName }: { onSubmitted: () 
       setSheetError(msg);
       toast(msg, "warning");
     }
-  }, [clients, stocks, toast]);
+  }, [clients, stocks, toast, isAdmin, designation]);
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
