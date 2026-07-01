@@ -5,7 +5,7 @@ export interface FormSubmissionRecord {
   clientName: string;
   executive: string;
   designation: string;
-  modeOfCommunication: "Phone" | "Online Meet" | "Physical";
+  modeOfCommunication: "Phone" | "Online Meet" | "Physical" | "Message";
   company: string;
   sector: string;
   cmpTarget: string;
