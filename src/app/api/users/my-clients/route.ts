@@ -15,6 +15,15 @@ const _GET = async (req: NextRequest) => {
 
   await connectDB();
 
+  // Admins and master admins see every client — no manual assignment needed
+  if (session.user.role === "admin" || session.user.role === "master_admin") {
+    const allClients = await mongoose.connection.collection("clients")
+      .find({}, { projection: { name: 1, code: 1 } })
+      .toArray();
+    console.log(`[users/my-clients] GET — returned all ${allClients.length} clients for ${session.user.role}=${session.user.email}`);
+    return NextResponse.json(allClients.map((c) => ({ _id: c._id.toString(), code: c.code, name: c.name })));
+  }
+
   // Use native collection to bypass cached old-schema model
   const user = await User.collection.findOne(
     { _id: new mongoose.Types.ObjectId(session.user.id as string) },

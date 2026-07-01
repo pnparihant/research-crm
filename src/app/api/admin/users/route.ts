@@ -20,10 +20,11 @@ const _GET = async (req: NextRequest) => {
   }
 
   await connectDB();
-  // Fetch regular users + the requesting admin themselves (so admins can assign clients to themselves)
+  // Admins and master admins get all clients automatically (see /api/users/my-clients) —
+  // only regular users need manual client assignment here.
   const users = await User.collection
     .find(
-      { $or: [{ role: "user" }, { _id: new mongoose.Types.ObjectId(session.user.id as string) }] },
+      { role: "user" },
       { projection: { name: 1, email: 1, phone: 1, role: 1, designation: 1, dept: 1, assignedClients: 1, createdAt: 1, twoFactorEnabled: 1 } }
     )
     .toArray();

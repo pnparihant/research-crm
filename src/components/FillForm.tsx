@@ -60,6 +60,10 @@ function FormPanel({
   const [stockSelected, setStockSelected] = useState(false);
   const stockRef = useRef<HTMLDivElement>(null);
 
+  const [clientQuery, setClientQuery] = useState("");
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const clientRef = useRef<HTMLDivElement>(null);
+
   const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split("T")[0];
 
   useEffect(() => {
@@ -69,6 +73,7 @@ function FormPanel({
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (stockRef.current && !stockRef.current.contains(e.target as Node)) setShowDropdown(false);
+      if (clientRef.current && !clientRef.current.contains(e.target as Node)) setShowClientDropdown(false);
     }
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
@@ -77,6 +82,30 @@ function FormPanel({
   const filteredStocks = stockQuery.trim().length >= 1
     ? stocks.filter((s) => s.StockName.toLowerCase().includes(stockQuery.toLowerCase())).slice(0, 50)
     : [];
+
+  const filteredClients = clients.filter((c) =>
+    !clientQuery.trim() || c.name.toLowerCase().includes(clientQuery.toLowerCase())
+  ).slice(0, 50);
+
+  function selectClient(client: ClientItem) {
+    setForm((prev) => ({ ...prev, clientName: client.name }));
+    setClientQuery(client.name);
+    setShowClientDropdown(false);
+  }
+
+  function clearClient() {
+    setForm((prev) => ({ ...prev, clientName: "" }));
+    setClientQuery("");
+    setClientOtherText("");
+    setShowClientDropdown(false);
+  }
+
+  function selectClientOthers(prefill = "") {
+    setForm((prev) => ({ ...prev, clientName: "__others__" }));
+    setClientOtherText(prefill);
+    setClientQuery("");
+    setShowClientDropdown(false);
+  }
 
   function selectStock(stock: StockItem) {
     setStockQuery(stock.StockName);
@@ -101,7 +130,7 @@ function FormPanel({
     setForm((prev) => ({ ...prev, company: "", sector: "" }));
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   }
@@ -110,6 +139,7 @@ function FormPanel({
     e.preventDefault();
     if (formType === "research" && !form.recommendation) { toast("Please select Buy, Sell or Hold", "warning"); return; }
     if (!form.modeOfCommunication) { toast("Please select mode of communication", "warning"); return; }
+    if (!form.clientName) { toast("Please select a client", "warning"); return; }
     if (form.clientName === "__others__" && !clientOtherText.trim()) {
       toast("Please enter the client name", "warning"); return;
     }
@@ -139,20 +169,12 @@ function FormPanel({
     toast("Form submitted successfully", "success");
     setForm({ ...EMPTY_FORM, salesPerson: userName, designation: initialDesignation });
     setStockQuery(""); setStockSelected(false);
+    setClientQuery(""); setShowClientDropdown(false);
     setClientOtherText(""); setCompanyOtherText(""); setCompanyIsOther(false);
     setTimeout(() => onSubmitted(), 1000);
   }
 
   const inputCls = "w-full px-3.5 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-gray-700 text-sm bg-white placeholder:text-gray-400 transition-shadow";
-  const selectCls = `${inputCls} appearance-none disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed`;
-
-  const SelectArrow = () => (
-    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-      </svg>
-    </div>
-  );
 
   const Badge = ({ n }: { n: number }) => (
     <span className="flex h-5 w-5 items-center justify-center rounded bg-teal-600 text-[10px] font-bold text-white shrink-0">{n}</span>
@@ -221,30 +243,94 @@ function FormPanel({
           <SectionLabel title="Client Details" />
           <div className="p-5 space-y-5">
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5" ref={clientRef}>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
                 <Badge n={4} /> Client Name <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <select name="clientName" value={form.clientName} onChange={handleChange} required disabled={clientsLoading} className={selectCls}>
-                  <option value="">
-                    {clientsLoading ? "Loading clients…" : clients.length === 0 ? "No clients assigned — contact admin" : "Select client"}
-                  </option>
-                  {clients.map((c) => <option key={c._id} value={c.name}>{c.name}</option>)}
-                  <option value="__others__">Others</option>
-                </select>
-                <SelectArrow />
+                {form.clientName === "__others__" ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 px-3.5 py-2.5 border border-amber-300 rounded-lg bg-amber-50 text-sm text-amber-700 font-medium">
+                      <span className="flex-1">Others (manual entry)</span>
+                      <button type="button" onClick={clearClient} className="text-amber-500 hover:text-red-500 transition-colors shrink-0">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={clientOtherText}
+                      onChange={(e) => setClientOtherText(e.target.value)}
+                      placeholder="Enter client name…"
+                      className={inputCls}
+                      autoFocus
+                    />
+                  </div>
+                ) : form.clientName ? (
+                  <div className="flex items-center gap-2 px-3.5 py-2.5 border border-teal-400 rounded-lg bg-teal-50 text-sm text-teal-800 font-medium">
+                    <svg className="w-4 h-4 text-teal-600 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="flex-1 truncate">{form.clientName}</span>
+                    <button type="button" onClick={clearClient} className="text-teal-500 hover:text-red-500 transition-colors ml-1 shrink-0">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value={clientQuery}
+                      onChange={(e) => { setClientQuery(e.target.value); setShowClientDropdown(true); }}
+                      onFocus={() => setShowClientDropdown(true)}
+                      required
+                      placeholder={clientsLoading ? "Loading clients…" : clients.length === 0 ? "No clients assigned — contact admin" : "Type to search client…"}
+                      disabled={clientsLoading}
+                      className={`${inputCls} pr-8 disabled:bg-gray-50 disabled:text-gray-400`}
+                      autoComplete="off"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Client not listed?{" "}
+                      <button type="button" onClick={() => selectClientOthers()} className="text-teal-600 hover:text-teal-700 font-medium underline">
+                        Select Others
+                      </button>
+                    </p>
+                    {showClientDropdown && filteredClients.length > 0 && (
+                      <ul className="absolute z-50 mt-1 w-full max-h-[40vh] overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm">
+                        {filteredClients.map((c) => (
+                          <li
+                            key={c._id}
+                            onMouseDown={() => selectClient(c)}
+                            className="px-3.5 py-2.5 hover:bg-teal-50 cursor-pointer border-b border-gray-100 last:border-0 font-medium text-gray-800"
+                          >
+                            {c.name}
+                          </li>
+                        ))}
+                        <li
+                          onMouseDown={() => selectClientOthers()}
+                          className="flex items-center gap-2 px-3.5 py-2.5 hover:bg-amber-50 cursor-pointer text-amber-700 font-medium"
+                        >
+                          Others (not listed)
+                        </li>
+                      </ul>
+                    )}
+                    {showClientDropdown && clientQuery.trim().length >= 1 && filteredClients.length === 0 && !clientsLoading && (
+                      <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm overflow-hidden">
+                        <div className="px-3.5 py-3 text-gray-400 border-b border-gray-100">No clients found for &quot;{clientQuery}&quot;</div>
+                        <div
+                          onMouseDown={() => selectClientOthers(clientQuery)}
+                          className="flex items-center gap-2 px-3.5 py-2.5 hover:bg-amber-50 cursor-pointer text-amber-700 font-medium"
+                        >
+                          Use &quot;{clientQuery}&quot; as Others
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-              {form.clientName === "__others__" && (
-                <input
-                  type="text"
-                  value={clientOtherText}
-                  onChange={(e) => setClientOtherText(e.target.value)}
-                  placeholder="Enter client name…"
-                  className={inputCls}
-                  autoFocus
-                />
-              )}
               {!clientsLoading && clients.length === 0 && (
                 <p className="text-xs text-amber-600 mt-1">Ask your admin to assign clients to your account.</p>
               )}

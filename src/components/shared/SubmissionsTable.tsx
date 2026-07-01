@@ -581,10 +581,9 @@ function LongTextCell({ value }: { value: string }) {
     <Tooltip title={value} placement="top" arrow>
       <span
         style={{
-          whiteSpace: "normal",
-          wordBreak: "break-word",
-          lineHeight: 1.4,
-          padding: "8px 0",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
           display: "block",
         }}
       >
@@ -593,6 +592,25 @@ function LongTextCell({ value }: { value: string }) {
     </Tooltip>
   );
 }
+
+const FIELD_LABELS: [keyof Row, string][] = [
+  ["date", "Date"],
+  ["salesPerson", "Arihant Representative"],
+  ["clientName", "Client"],
+  ["designation", "Designation"],
+  ["modeOfCommunication", "Mode of Communication"],
+  ["company", "Company"],
+  ["sector", "Sector"],
+  ["cmpTarget", "CMP & Target"],
+  ["analystName", "Buy Side Person"],
+  ["buySideAnalystDesignation", "Buy Side Person Designation"],
+  ["rationale", "Rationale"],
+  ["feedback", "Feedback"],
+  ["others", "Others"],
+  ["submittedBy", "Submitted By"],
+  ["submittedByEmail", "Submitted By Email"],
+  ["submittedAt", "Submitted At"],
+];
 
 function Toolbar() {
   return (
@@ -658,6 +676,7 @@ export default function SubmissionsTable({
   const [exportShowPwd, setExportShowPwd] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [isLimited, setIsLimited] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<Row | null>(null);
   const { toast } = useToast();
 
   const ring = accent === "purple" ? "focus:ring-purple-400" : "focus:ring-indigo-400";
@@ -796,7 +815,7 @@ export default function SubmissionsTable({
       field: "actions", headerName: "", width: 60, sortable: false, filterable: false, disableColumnMenu: true,
       renderCell: (p: GridRenderCellParams) => (
         <button
-          onClick={() => setConfirmId(p.row.id as string)}
+          onClick={(e) => { e.stopPropagation(); setConfirmId(p.row.id as string); }}
           disabled={deletingId === p.row.id}
           className="flex items-center justify-center w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-40"
           title="Delete submission"
@@ -943,6 +962,42 @@ export default function SubmissionsTable({
         </div>
       )}
 
+      {/* Row detail modal */}
+      {selectedRow && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setSelectedRow(null)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between mb-4 gap-3">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">
+                  {selectedRow.formType === "institution" ? selectedRow.clientName : selectedRow.company || "Submission details"}
+                </h3>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <Chip
+                    label={selectedRow.formType === "institution" ? "Institution" : "Research"}
+                    size="small"
+                    sx={{ fontWeight: 600, fontSize: 12, bgcolor: selectedRow.formType === "institution" ? "#f3e8ff" : "#eff6ff", color: selectedRow.formType === "institution" ? "#7e22ce" : "#1d4ed8" }}
+                  />
+                  {selectedRow.recommendation && (
+                    <Chip label={selectedRow.recommendation} color={REC_COLOR[selectedRow.recommendation]} size="small" sx={{ fontWeight: 600, fontSize: 12 }} />
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setSelectedRow(null)} className="text-gray-400 hover:text-gray-600 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+              {FIELD_LABELS.map(([field, label]) => (
+                <div key={field}>
+                  <p className="text-gray-400 uppercase tracking-wide font-medium mb-0.5" style={{ fontSize: 10 }}>{label}</p>
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">{selectedRow[field] || "—"}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         {/* Header */}
         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100">
@@ -993,8 +1048,8 @@ export default function SubmissionsTable({
               filterModel={filterModel} onFilterModelChange={handleFilterModelChange}
               slots={{ toolbar: Toolbar }}
               disableRowSelectionOnClick
-              getRowHeight={() => "auto"}
-              sx={{ border: 0, "& .MuiDataGrid-columnHeaders": { backgroundColor: headerBg, fontWeight: 700, fontSize: 13 }, "& .MuiDataGrid-cell": { fontSize: 13, alignItems: "flex-start", py: 1 }, "& .MuiDataGrid-toolbarContainer": { borderBottom: "1px solid #e5e7eb" } }}
+              onRowClick={(params) => setSelectedRow(params.row as Row)}
+              sx={{ border: 0, "& .MuiDataGrid-columnHeaders": { backgroundColor: headerBg, fontWeight: 700, fontSize: 13 }, "& .MuiDataGrid-cell": { fontSize: 13 }, "& .MuiDataGrid-row": { cursor: "pointer" }, "& .MuiDataGrid-toolbarContainer": { borderBottom: "1px solid #e5e7eb" } }}
             />
           </Box>
         </div>

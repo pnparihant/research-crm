@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/Toast";
 
@@ -27,7 +27,18 @@ export default function AssignClients() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [openUser, setOpenUser] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [clientQuery, setClientQuery] = useState("");
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const clientPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (clientPickerRef.current && !clientPickerRef.current.contains(e.target as Node)) setShowClientDropdown(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -85,10 +96,29 @@ export default function AssignClients() {
     );
   }
 
-  const filteredClients = allClients.filter((c) =>
-    !search ||
-    c.name?.toLowerCase().includes(search.toLowerCase()) ||
-    c.code?.toLowerCase().includes(search.toLowerCase())
+  const filteredClients = clientQuery.trim().length >= 1
+    ? allClients.filter((c) =>
+        c.name?.toLowerCase().includes(clientQuery.toLowerCase()) ||
+        c.code?.toLowerCase().includes(clientQuery.toLowerCase())
+      ).slice(0, 50)
+    : [];
+
+  function toggleUser(userId: string) {
+    setOpenUser((prev) => (prev === userId ? null : userId));
+    setClientQuery("");
+    setShowClientDropdown(false);
+  }
+
+  function selectClient(user: UserItem, client: ClientItem) {
+    toggle(user, client);
+    setClientQuery("");
+    setShowClientDropdown(false);
+  }
+
+  const filteredUsers = users.filter((u) =>
+    !userSearch ||
+    u.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+    u.email?.toLowerCase().includes(userSearch.toLowerCase())
   );
 
   if (loading) return (
@@ -105,16 +135,26 @@ export default function AssignClients() {
         <p className="text-sm text-gray-500">Each user sees only their assigned clients in the form. Assignments are logged with the admin who made them.</p>
       </div>
 
-      {users.length === 0 ? (
+      <div className="bg-white rounded-2xl border border-gray-200 p-4">
+        <input
+          type="text"
+          placeholder="Search users by name or email…"
+          value={userSearch}
+          onChange={(e) => setUserSearch(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
+
+      {filteredUsers.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center text-gray-400 text-sm">
-          No users found.
+          {users.length === 0 ? "No users found." : "No users match your search."}
         </div>
       ) : (
-        users.map((user) => (
+        filteredUsers.map((user) => (
           <div key={user._id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <div
               className="flex items-center justify-between px-5 py-4 cursor-pointer hover:bg-gray-50 transition-colors"
-              onClick={() => setOpenUser(openUser === user._id ? null : user._id)}
+              onClick={() => toggleUser(user._id)}
             >
               <div>
                 <div className="flex items-center gap-2">
@@ -140,52 +180,83 @@ export default function AssignClients() {
 
             {openUser === user._id && (
               <div className="border-t border-gray-100 px-5 py-4">
-                <div className="mb-3">
+                <div className="relative mb-4" ref={clientPickerRef}>
                   <input
                     type="text"
-                    placeholder="Search clients…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={clientQuery}
+                    onChange={(e) => { setClientQuery(e.target.value); setShowClientDropdown(true); }}
+                    onFocus={() => { if (clientQuery) setShowClientDropdown(true); }}
+                    placeholder="Type to search a client to assign…"
+                    className="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    autoComplete="off"
                   />
+                  {clientQuery && (
+                    <button
+                      type="button"
+                      onClick={() => { setClientQuery(""); setShowClientDropdown(false); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                  {showClientDropdown && filteredClients.length > 0 && (
+                    <ul className="absolute z-10 mt-1 w-full max-h-[40vh] overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm">
+                      {filteredClients.map((client) => {
+                        const assigned = !!getAssignment(user, client._id);
+                        const isSaving = saving === user._id + client._id;
+                        return (
+                          <li
+                            key={client._id}
+                            onMouseDown={() => !isSaving && selectClient(user, client)}
+                            className={`flex items-center justify-between gap-3 px-3.5 py-2.5 cursor-pointer border-b border-gray-100 last:border-0 ${assigned ? "bg-indigo-50" : "hover:bg-indigo-50"}`}
+                          >
+                            <div className="min-w-0">
+                              <span className="font-medium text-gray-800">{client.name}</span>
+                              {client.code && <span className="text-xs text-gray-400 ml-2">{client.code}</span>}
+                            </div>
+                            {isSaving ? (
+                              <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin shrink-0" />
+                            ) : assigned ? (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 uppercase tracking-wide shrink-0">Assigned · tap to remove</span>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  {showClientDropdown && clientQuery.trim().length >= 1 && filteredClients.length === 0 && (
+                    <div className="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg text-sm px-3.5 py-3 text-gray-400">
+                      No clients found for &quot;{clientQuery}&quot;
+                    </div>
+                  )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[50vh] overflow-y-auto pr-1">
-                  {filteredClients.map((client) => {
-                    const assignment = getAssignment(user, client._id);
-                    const assigned = !!assignment;
-                    const isSaving = saving === user._id + client._id;
-                    return (
-                      <label
-                        key={client._id}
-                        className={`flex items-start gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-all ${assigned ? "border-indigo-300 bg-indigo-50" : "border-gray-200 hover:border-indigo-200 hover:bg-gray-50"}`}
+
+                {user.assignedClients.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-6">No clients assigned yet — search above to assign one.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {user.assignedClients.map((assignment) => (
+                      <span
+                        key={assignment.client._id}
+                        className="inline-flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-800 text-xs font-medium"
+                        title={`Assigned by ${assignment.assignedByName} · ${new Date(assignment.assignedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`}
                       >
-                        <div className="mt-0.5">
-                          {isSaving ? (
-                            <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <input
-                              type="checkbox"
-                              checked={assigned}
-                              onChange={() => toggle(user, client)}
-                              className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
-                            />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm text-gray-700 leading-tight">{client.name}</p>
-                          <p className="text-[10px] text-gray-400 font-mono mt-0.5">{client.code}</p>
-                          {assigned && assignment && (
-                            <p className="text-[10px] text-indigo-500 mt-0.5 truncate">
-                              by {assignment.assignedByName} · {new Date(assignment.assignedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                            </p>
-                          )}
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-                {filteredClients.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-4">No clients match your search</p>
+                        {assignment.client.name}
+                        <button
+                          type="button"
+                          onClick={() => toggle(user, assignment.client)}
+                          disabled={saving === user._id + assignment.client._id}
+                          className="text-indigo-400 hover:text-red-500 transition-colors disabled:opacity-40"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
