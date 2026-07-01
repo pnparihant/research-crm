@@ -85,6 +85,24 @@ export async function generateTemplateBuffer(
     wsClients.addRow(["Your Assigned Clients"]);
     clientNames.forEach((n) => wsClients.addRow([n]));
     wsClients.getColumn(1).width = 40;
+
+    // Excel-native dropdown on the "Client Name" column (5th header), sourced from
+    // this sheet — gives a searchable/type-ahead pick list without hard-blocking
+    // free text (errorStyle "warning" lets the user still type something else).
+    const CLIENT_NAME_COL = "E";
+    const MAX_ENTRY_ROWS = 501; // header + up to 500 data rows, matching the bulk-upload limit
+    const lastClientRow = clientNames.length + 1; // +1 for the "Your Assigned Clients" header row
+    for (let r = 2; r <= MAX_ENTRY_ROWS; r++) {
+      wsEntries.getCell(`${CLIENT_NAME_COL}${r}`).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: [`'My Clients'!$A$2:$A$${lastClientRow}`],
+        showErrorMessage: true,
+        errorStyle: "warning",
+        errorTitle: "Not in your client list",
+        error: "This name isn't in your assigned clients. Choose Continue to keep it, or Cancel to pick from the list.",
+      };
+    }
   }
 
   // Hidden signature sheet — HMAC(userId:dateLabel) so the server can verify authenticity
