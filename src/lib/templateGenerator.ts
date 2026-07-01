@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import crypto from "crypto";
+import { MODES as BASE_MODES, ADMIN_MODES } from "@/lib/modeOfCommunication";
 
 export function signTemplate(userId: string, dateLabel: string): string {
   const secret = process.env.TEMPLATE_SECRET;
@@ -35,7 +36,6 @@ const DESIGNATIONS = [
   "Back Office Operations",
 ];
 
-const MODES = ["Phone", "Online Meet", "Physical"];
 const RECS  = ["Buy", "Sell", "Hold"];
 
 const TEMPLATE_HEADERS = [
@@ -58,9 +58,11 @@ const TEMPLATE_HEADERS = [
 export async function generateTemplateBuffer(
   clientNames: string[] = [],
   userId?: string,
-  dateLabel?: string
+  dateLabel?: string,
+  isAdmin: boolean = false
 ): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
+  const MODES = isAdmin ? ADMIN_MODES : BASE_MODES;
 
   // Entries sheet — headers only
   const wsEntries = wb.addWorksheet("Entries");

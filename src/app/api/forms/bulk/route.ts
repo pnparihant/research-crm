@@ -5,6 +5,9 @@ import { FormSubmission } from "@/models/FormSubmission";
 import { logAction } from "@/lib/auditLog";
 import { verifyTemplateSignature } from "@/lib/templateGenerator";
 import { withErrorHandler } from "@/lib/apiHandler";
+import { normalizeMode } from "@/lib/modeOfCommunication";
+
+const ADMIN_ROLES = ["admin", "master_admin"];
 
 function istDateLabel(date: Date): string {
   return date
@@ -69,8 +72,11 @@ const _POST = async (req: NextRequest) => {
     return NextResponse.json({ error: "Maximum 500 entries per upload" }, { status: 400 });
   }
 
-  // Server-side filename date validation
-  if (filename) {
+  const isAdminRole = ADMIN_ROLES.includes(session.user.role as string);
+
+  // Server-side filename date validation — admins are exempt from the
+  // official-template filename/date/signature check.
+  if (filename && !isAdminRole) {
     const dateMatch = filename.match(/CRM_Sheet_(\d{2}-\d{2}-\d{4})/);
     const today = todayISTLabel();
 
@@ -140,7 +146,7 @@ const _POST = async (req: NextRequest) => {
     salesPerson:              session.user.name ?? "",
     clientName:               row.clientName ?? "",
     designation:              row.designation ?? "",
-    modeOfCommunication:      row.modeOfCommunication ?? "",
+    modeOfCommunication:      normalizeMode(row.modeOfCommunication ?? "", isAdminRole),
     formType:                 row.company?.trim() ? "research" : "institution",
     company:                  row.company ?? "",
     sector:                   row.sector ?? "",
