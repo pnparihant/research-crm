@@ -14,7 +14,7 @@ const _GET = async (req: NextRequest) => {
 
   const user = await mongoose.connection.collection("users").findOne(
     { _id: new mongoose.Types.ObjectId(session.user.id as string) },
-    { projection: { name: 1, assignedClients: 1 } }
+    { projection: { name: 1, assignedClients: 1, designation: 1 } }
   );
 
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -42,7 +42,8 @@ const _GET = async (req: NextRequest) => {
 
   const clientNames = clientDocs.map((c) => c.name as string);
   const isAdmin = session.user.role === "admin" || session.user.role === "master_admin";
-  const buffer = await generateTemplateBuffer(clientNames, session.user.id as string, dateLabel, isAdmin);
+  const designation = (user.designation as string | null) ?? "";
+  const buffer = await generateTemplateBuffer(clientNames, session.user.id as string, dateLabel, isAdmin, designation);
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

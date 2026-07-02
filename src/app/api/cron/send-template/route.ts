@@ -26,7 +26,7 @@ const _POST = async (req: NextRequest) => {
     : { role: { $in: ["user", "admin"] } };
 
   const users = await User.collection
-    .find(query, { projection: { name: 1, email: 1, assignedClients: 1 } })
+    .find(query, { projection: { name: 1, email: 1, assignedClients: 1, role: 1, designation: 1 } })
     .toArray();
 
   if (users.length === 0) {
@@ -65,7 +65,9 @@ const _POST = async (req: NextRequest) => {
         .map((ac: { client: mongoose.Types.ObjectId }) => clientMap[ac.client?.toString()] ?? "")
         .filter(Boolean);
 
-      const buffer = await generateTemplateBuffer(clientNames, user._id.toString(), dateLabel);
+      const isAdmin = user.role === "admin" || user.role === "master_admin";
+      const designation = (user.designation as string | null) ?? "";
+      const buffer = await generateTemplateBuffer(clientNames, user._id.toString(), dateLabel, isAdmin, designation);
       await sendDailyTemplateEmail(user.email, user.name, dateLabel, buffer);
       sent++;
     } catch (err) {

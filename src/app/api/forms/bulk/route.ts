@@ -5,7 +5,7 @@ import { FormSubmission } from "@/models/FormSubmission";
 import { logAction } from "@/lib/auditLog";
 import { verifyTemplateSignature } from "@/lib/templateGenerator";
 import { withErrorHandler } from "@/lib/apiHandler";
-import { normalizeMode } from "@/lib/modeOfCommunication";
+import { MODES, ADMIN_MODES, normalizeMode } from "@/lib/modeOfCommunication";
 
 const ADMIN_ROLES = ["admin", "master_admin"];
 
@@ -140,24 +140,33 @@ const _POST = async (req: NextRequest) => {
   console.log(`[forms/bulk] POST — inserting ${rows.length} entries for user=${session.user.email}`);
   await connectDB();
 
-  const docs = rows.map((row: Record<string, string>) => ({
-    userId:                   session.user.id,
-    date:                     row.date ?? "",
-    salesPerson:              session.user.name ?? "",
-    clientName:               row.clientName ?? "",
-    designation:              row.designation ?? "",
-    modeOfCommunication:      normalizeMode(row.modeOfCommunication ?? "", isAdminRole),
-    formType:                 row.company?.trim() ? "research" : "institution",
-    company:                  row.company ?? "",
-    sector:                   row.sector ?? "",
-    cmpTarget:                row.cmpTarget ?? "",
-    recommendation:           row.recommendation ?? "",
-    analystName:              row.analystName ?? "",
-    buySideAnalystDesignation: row.buySideAnalystDesignation ?? "",
-    rationale:                row.rationale ?? "",
-    feedback:                 row.feedback ?? "",
-    submittedAt:              new Date(),
-  }));
+  // Only clientName and designation are meaningfully validated for bulk upload — every
+  // other field the FormSubmission schema marks `required` gets a safe fallback here so
+  // a blank cell can never cause Mongoose to silently drop the row from insertMany.
+  const validModes: readonly string[] = isAdminRole ? ADMIN_MODES : MODES;
+  const docs = rows.map((row: Record<string, string>) => {
+    const normalizedMode = normalizeMode(row.modeOfCommunication ?? "", isAdminRole);
+    return {
+      userId:                   session.user.id,
+      date:                     row.date?.trim() || todayISTLabel(),
+      salesPerson:              session.user.name ?? "",
+      clientName:               row.clientName ?? "",
+      // Admins bulk-upload on behalf of reps with no fixed designation to fall back
+      // on, so a blank cell there needs its own placeholder too.
+      designation:              row.designation?.trim() || "-",
+      modeOfCommunication:      validModes.includes(normalizedMode) ? normalizedMode : MODES[0],
+      formType:                 row.company?.trim() ? "research" : "institution",
+      company:                  row.company ?? "",
+      sector:                   row.sector ?? "",
+      cmpTarget:                row.cmpTarget ?? "",
+      recommendation:           row.recommendation ?? "",
+      analystName:              row.analystName?.trim() || "-",
+      buySideAnalystDesignation: row.buySideAnalystDesignation ?? "",
+      rationale:                row.rationale ?? "",
+      feedback:                 row.feedback ?? "",
+      submittedAt:              new Date(),
+    };
+  });
 
   const inserted = await FormSubmission.insertMany(docs, { ordered: false });
   console.log(`[forms/bulk] POST — inserted ${inserted.length} entries for user=${session.user.email}`);

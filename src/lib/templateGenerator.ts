@@ -59,7 +59,8 @@ export async function generateTemplateBuffer(
   clientNames: string[] = [],
   userId?: string,
   dateLabel?: string,
-  isAdmin: boolean = false
+  isAdmin: boolean = false,
+  designation: string = ""
 ): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   const MODES = isAdmin ? ADMIN_MODES : BASE_MODES;
@@ -70,6 +71,17 @@ export async function generateTemplateBuffer(
   TEMPLATE_HEADERS.forEach((h, i) => {
     wsEntries.getColumn(i + 1).width = Math.max(h.length, 22);
   });
+
+  // Pre-fill the "Designation" column with the uploader's own designation so they
+  // don't have to look it up in the Reference sheet — admins have no personal
+  // designation to draw from, so their sheet is left blank for manual entry per row.
+  if (designation.trim()) {
+    const DESIGNATION_COL = "D";
+    const MAX_ENTRY_ROWS = 501; // header + up to 500 data rows, matching the bulk-upload limit
+    for (let r = 2; r <= MAX_ENTRY_ROWS; r++) {
+      wsEntries.getCell(`${DESIGNATION_COL}${r}`).value = designation;
+    }
+  }
 
   // Reference sheet
   const wsRef = wb.addWorksheet("Reference");
