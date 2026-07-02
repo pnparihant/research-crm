@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { MODES as BASE_MODES, ADMIN_MODES, normalizeMode } from "@/lib/modeOfCommunication";
+import { normalizeMode } from "@/lib/modeOfCommunication";
 
 interface ClientItem { _id: string; name: string }
 interface StockItem  { StockName: string; sect_name: string }
@@ -40,21 +40,12 @@ const DESIGNATIONS = [
   "Back Office Operations",
 ];
 
-const RECS  = ["Buy", "Sell", "Hold"];
-
 function validateRow(row: Omit<Row, "_errors">, _clients: ClientItem[], stocks: StockItem[], isAdmin: boolean, designation: string): string[] {
   const errs: string[] = [];
-  const modes = isAdmin ? ADMIN_MODES : BASE_MODES;
-  // Only flag invalid values — blank is always fine. Case doesn't matter.
+  // Normalize mode casing when possible, but don't block submission on it.
   if (row.modeOfCommunication) {
-    const normalized = normalizeMode(row.modeOfCommunication, isAdmin);
-    if (!(modes as readonly string[]).includes(normalized))
-      errs.push(`Mode must be: ${modes.join(" / ")}`);
-    else
-      row.modeOfCommunication = normalized;
+    row.modeOfCommunication = normalizeMode(row.modeOfCommunication, isAdmin);
   }
-  if (row.recommendation && !RECS.includes(row.recommendation))
-    errs.push(`Rec. must be: ${RECS.join(" / ")}`);
   // Auto-fill sector from stock list
   if (row.company && stocks.length > 0) {
     const match = stocks.find(s => s.StockName.toLowerCase() === row.company.toLowerCase());
@@ -62,6 +53,11 @@ function validateRow(row: Omit<Row, "_errors">, _clients: ClientItem[], stocks: 
   }
   // Designation is the uploading user's own designation — always the same for every row
   if (designation) row.designation = designation;
+
+  if (!row.clientName?.trim()) errs.push("Client name is required");
+  // Admins have no personal designation to auto-fill — they upload on behalf of
+  // reps with varying designations, so don't force it on this path.
+  if (!isAdmin && !row.designation?.trim()) errs.push("Designation is required");
   return errs;
 }
 
@@ -172,7 +168,8 @@ export default function BulkUpload({ onSubmitted, userName, isAdmin = false }: {
 
     const rows: Row[] = parsed.rows.map((base) => {
       const row = { ...base };
-      return { ...row, _errors: validateRow(row, clients, stocks, isAdmin, designation) };
+      const _errors = validateRow(row, clients, stocks, isAdmin, designation);
+      return { ...row, _errors };
     });
 
     setRows(rows);
